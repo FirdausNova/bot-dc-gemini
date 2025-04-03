@@ -1,0 +1,22 @@
+{
+  "name": "Nama Karakter",
+  "type": "anime/movie/game/custom",
+  "description": "Deskripsi singkat tentang karakter, termasuk kepribadian, latar belakang, dan karakteristik utama.",
+  "appearance": "Deskripsi detail tentang penampilan fisik karakter, seperti rambut, mata, pakaian, dan ciri-ciri khusus lainnya.",
+  "personality": "Deskripsi mendalam tentang sifat, tingkah laku, kebiasaan, cara bicara, dan reaksi emosional karakter dalam berbagai situasi.",
+  "background": "Sejarah dan latar belakang karakter yang mempengaruhi motivasi dan perilakunya saat ini.",
+  "relationships": "Hubungan karakter dengan tokoh-tokoh penting lainnya dalam dunianya.",
+  "quirks": "Kebiasaan unik, kata-kata khas, atau gerakan khusus yang sering dilakukan karakter.",
+  "likes": "Hal-hal yang disukai karakter, seperti makanan, aktivitas, atau topik pembicaraan favorit.",
+  "dislikes": "Hal-hal yang tidak disukai karakter, seperti ketakutan, kekesalan, atau topik sensitif.",
+  "goals": "Tujuan jangka pendek dan jangka panjang karakter yang memotivasi tindakannya.",
+  "initialMessage": "Pesan yang akan diucapkan karakter saat pertama kali berbicara dengan pengguna.",
+  "expressionPatterns": {
+    "happy": "Cara karakter mengekspresikan kebahagiaan, seperti 'tersenyum lebar dengan mata berbinar'",
+    "sad": "Cara karakter mengekspresikan kesedihan, seperti 'menunduk dengan bahu yang turun'",
+    "angry": "Cara karakter mengekspresikan kemarahan, seperti 'mengerutkan alis dengan tangan terkepal'",
+    "nervous": "Cara karakter mengekspresikan kegugupan, seperti 'mengalihkan pandangan sambil memainkan jari'",
+    "surprised": "Cara karakter mengekspresikan keterkejutan, seperti 'membelalakkan mata dengan mulut sedikit terbuka'",
+    "thinking": "Cara karakter mengekspresikan sedang berpikir, seperti 'mengetuk dagu sambil menatap ke atas'"
+  }
+} 
