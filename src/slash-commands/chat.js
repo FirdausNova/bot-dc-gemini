@@ -81,34 +81,75 @@ module.exports = {
       const character = getCharacter();
       
       // Dapatkan respons dari AI
-      const response = await getAIResponse(userId, messageContent);
+      const aiResponse = await getAIResponse(userId, messageContent);
       
-      // Saat mengirim respons terakhir
-      // Cek panjang respons dan potong jika terlalu panjang (batas Discord 2000 karakter)
-      const maxMessageLength = 1900; // Simpan margin untuk komponen lain
-      let formattedResponse = response;
-      
-      // Jika respons terlalu panjang, potong dan tambahkan notifikasi pemotongan
-      if (response.length > maxMessageLength) {
-        formattedResponse = response.substring(0, maxMessageLength) + '\n\n... *(respons terpotong karena terlalu panjang)*';
+      // Periksa jika respons adalah multipart
+      if (aiResponse.multipart) {
+        console.log(`Mengirim multipart response (${aiResponse.parts.length} bagian) untuk slash command`);
+        
+        // Kirim bagian pertama dalam bentuk embed
+        const embed = new EmbedBuilder()
+          .setColor('#0099ff')
+          .setAuthor({
+            name: character.name,
+            iconURL: interaction.client.user.displayAvatarURL()
+          })
+          .setDescription(aiResponse.parts[0])
+          .setFooter({
+            text: `Diminta oleh ${interaction.user.tag} (Bagian 1/${aiResponse.parts.length})`,
+            iconURL: interaction.user.displayAvatarURL()
+          })
+          .setTimestamp();
+        
+        // Kirim bagian pertama sebagai respons awal
+        await interaction.editReply({ embeds: [embed] });
+        
+        // Kirim bagian lainnya sebagai respons terpisah
+        for (let i = 1; i < aiResponse.parts.length; i++) {
+          // Tampilkan "bot sedang mengetik" 
+          await interaction.channel.sendTyping();
+          
+          // Buat embed untuk bagian berikutnya
+          const partEmbed = new EmbedBuilder()
+            .setColor('#0099ff')
+            .setAuthor({
+              name: character.name,
+              iconURL: interaction.client.user.displayAvatarURL()
+            })
+            .setDescription(aiResponse.parts[i])
+            .setFooter({
+              text: `Diminta oleh ${interaction.user.tag} (Bagian ${i+1}/${aiResponse.parts.length})`,
+              iconURL: interaction.user.displayAvatarURL()
+            })
+            .setTimestamp();
+          
+          // Kirim sebagai respons terpisah
+          await interaction.followUp({ embeds: [partEmbed] });
+          
+          // Delay kecil untuk terlihat lebih natural
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } else {
+        // Respons tunggal (non-multipart)
+        const formattedResponse = aiResponse.text;
+        
+        // Buat embed untuk respons
+        const embed = new EmbedBuilder()
+          .setColor('#0099ff')
+          .setAuthor({
+            name: character.name,
+            iconURL: interaction.client.user.displayAvatarURL()
+          })
+          .setDescription(formattedResponse)
+          .setFooter({
+            text: `Diminta oleh ${interaction.user.tag}`,
+            iconURL: interaction.user.displayAvatarURL()
+          })
+          .setTimestamp();
+        
+        // Kirim respons embed
+        await interaction.editReply({ embeds: [embed] });
       }
-      
-      // Buat embed untuk respons
-      const embed = new EmbedBuilder()
-        .setColor('#0099ff')
-        .setAuthor({
-          name: character.name,
-          iconURL: interaction.client.user.displayAvatarURL()
-        })
-        .setDescription(formattedResponse)
-        .setFooter({
-          text: `Diminta oleh ${interaction.user.tag}`,
-          iconURL: interaction.user.displayAvatarURL()
-        })
-        .setTimestamp();
-      
-      // Kirim respons embed
-      await interaction.editReply({ embeds: [embed] });
       
     } catch (error) {
       console.error('Error responding to chat command:', error);

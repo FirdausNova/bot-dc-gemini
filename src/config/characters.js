@@ -5,6 +5,7 @@ require('dotenv').config();
 
 // Path ke file penyimpanan karakter
 const CHARACTERS_FILE = path.join(__dirname, '../data/characters.json');
+const CHARACTERS_DIR = path.join(__dirname, '../data/characters');
 
 // Direktori untuk file ekspor/impor sementara
 const TEMP_DIR = path.join(__dirname, '../../temp');
@@ -42,7 +43,32 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
-// Fungsi untuk memastikan file karakter ada
+// Pastikan direktori characters ada
+if (!fs.existsSync(CHARACTERS_DIR)) {
+  fs.mkdirSync(CHARACTERS_DIR, { recursive: true });
+}
+
+/**
+ * Ensure character subdirectory exists
+ * @param {string} characterName - Character name
+ * @returns {string} Path to character directory
+ */
+function ensureCharacterDirectory(characterName) {
+  if (!characterName) return null;
+  
+  const safeName = characterName.toLowerCase().replace(/\s+/g, '_');
+  const characterPath = path.join(CHARACTERS_DIR, safeName);
+  
+  if (!fs.existsSync(characterPath)) {
+    fs.mkdirSync(characterPath, { recursive: true });
+  }
+  
+  return characterPath;
+}
+
+/**
+ * Ensure characters.json file exists
+ */
 function ensureCharactersFile() {
   const dirPath = path.dirname(CHARACTERS_FILE);
   
@@ -64,7 +90,85 @@ function ensureCharactersFile() {
   }
 }
 
-// Mendapatkan semua karakter
+/**
+ * Get character config from individual file
+ * @param {string} characterName - Character name 
+ * @returns {object|null} Character config or null if not found
+ */
+function getCharacterFromFile(characterName) {
+  try {
+    if (!characterName) return null;
+    
+    const safeName = characterName.toLowerCase().replace(/\s+/g, '_');
+    const characterPath = path.join(CHARACTERS_DIR, safeName);
+    const configPath = path.join(characterPath, 'config.json');
+    
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      const character = JSON.parse(data);
+      
+      // Ensure all required properties exist
+      ensureRequiredProperties(character);
+      
+      return character;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error reading character file for ${characterName}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save character config to individual file
+ * @param {string} characterName - Character name
+ * @param {object} character - Character data
+ * @returns {boolean} Success status
+ */
+function saveCharacterToFile(characterName, character) {
+  try {
+    if (!characterName || !character) return false;
+    
+    const characterPath = ensureCharacterDirectory(characterName);
+    const configPath = path.join(characterPath, 'config.json');
+    
+    // Ensure all required properties exist
+    ensureRequiredProperties(character);
+    
+    fs.writeFileSync(configPath, JSON.stringify(character, null, 2));
+    return true;
+  } catch (error) {
+    console.error(`Error saving character file for ${characterName}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Ensure all required properties exist on character object
+ * @param {object} character - Character data
+ */
+function ensureRequiredProperties(character) {
+  const requiredProperties = [
+    'appearance', 'initialMessage', 'personality', 'background',
+    'relationships', 'quirks', 'likes', 'dislikes', 'goals', 'expressionPatterns'
+  ];
+  
+  requiredProperties.forEach(prop => {
+    if (!character.hasOwnProperty(prop)) {
+      if (prop === 'expressionPatterns') {
+        character[prop] = {};
+      } else {
+        character[prop] = '';
+      }
+    }
+  });
+}
+
+/**
+ * Get all characters (combines central file and individual files)
+ * @returns {object} Characters data
+ */
 function getAllCharacters() {
   ensureCharactersFile();
   
@@ -72,34 +176,38 @@ function getAllCharacters() {
     const data = fs.readFileSync(CHARACTERS_FILE, 'utf8');
     const characters = JSON.parse(data);
     
-    // Pastikan semua karakter memiliki properti yang diperlukan
-    const requiredProperties = [
-      'appearance', 'initialMessage', 'personality', 'background',
-      'relationships', 'quirks', 'likes', 'dislikes', 'goals', 'expressionPatterns'
-    ];
+    // Ensure default character has all required properties
+    ensureRequiredProperties(characters.default);
     
-    // Pastikan default karakter memiliki semua properti
-    requiredProperties.forEach(prop => {
-      if (!characters.default.hasOwnProperty(prop)) {
-        if (prop === 'expressionPatterns') {
-          characters.default[prop] = {};
-        } else {
-          characters.default[prop] = '';
-        }
-      }
-    });
-    
-    // Pastikan semua karakter dalam daftar memiliki semua properti
-    Object.keys(characters.characters).forEach(key => {
-      requiredProperties.forEach(prop => {
-        if (!characters.characters[key].hasOwnProperty(prop)) {
-          if (prop === 'expressionPatterns') {
-            characters.characters[key][prop] = {};
-          } else {
-            characters.characters[key][prop] = '';
+    // Check for individual character files
+    if (fs.existsSync(CHARACTERS_DIR)) {
+      const characterDirs = fs.readdirSync(CHARACTERS_DIR);
+      
+      characterDirs.forEach(dir => {
+        const configPath = path.join(CHARACTERS_DIR, dir, 'config.json');
+        
+        if (fs.existsSync(configPath)) {
+          try {
+            const characterData = fs.readFileSync(configPath, 'utf8');
+            const character = JSON.parse(characterData);
+            
+            // Use folder structure to determine character name
+            const charName = character.name.toLowerCase();
+            
+            // Only add if not already in characters.json
+            if (!characters.characters[charName]) {
+              characters.characters[charName] = character;
+            }
+          } catch (err) {
+            console.error(`Error reading character file ${configPath}:`, err);
           }
         }
       });
+    }
+    
+    // Make sure all characters in the main file have required properties
+    Object.keys(characters.characters).forEach(key => {
+      ensureRequiredProperties(characters.characters[key]);
     });
     
     return characters;
@@ -109,7 +217,11 @@ function getAllCharacters() {
   }
 }
 
-// Mendapatkan karakter tertentu
+/**
+ * Get a specific character
+ * @param {string} name - Character name
+ * @returns {object} Character data
+ */
 function getCharacter(name) {
   const charactersData = getAllCharacters();
   
@@ -118,13 +230,30 @@ function getCharacter(name) {
   }
   
   const searchName = name.toLowerCase();
+  
+  // First check for individual file
+  const fileCharacter = getCharacterFromFile(searchName);
+  if (fileCharacter) {
+    return fileCharacter;
+  }
+  
+  // Fallback to characters.json
   return charactersData.characters[searchName] || charactersData.default;
 }
 
-// Menambahkan atau mengupdate karakter
+/**
+ * Add or update a character
+ * @param {string} name - Character name
+ * @param {string} type - Character type
+ * @param {string} description - Character description
+ * @param {string} appearance - Character appearance
+ * @param {string} initialMessage - Character initial message
+ * @param {object} additionalProps - Additional character properties
+ * @returns {object} Character data
+ */
 function setCharacter(name, type, description, appearance = '', initialMessage = '', additionalProps = {}) {
   if (!name) {
-    throw new Error('Nama karakter wajib diisi');
+    throw new Error('Character name is required');
   }
   
   const character = {
@@ -132,7 +261,7 @@ function setCharacter(name, type, description, appearance = '', initialMessage =
     type: type || 'custom',
     description: description || `Custom character ${name}`,
     appearance: appearance || '',
-    initialMessage: initialMessage || 'Halo! Saya siap membantu Anda.',
+    initialMessage: initialMessage || 'Hello! I am ready to assist you.',
     personality: additionalProps.personality || '',
     background: additionalProps.background || '',
     relationships: additionalProps.relationships || '',
@@ -144,12 +273,17 @@ function setCharacter(name, type, description, appearance = '', initialMessage =
   };
   
   try {
+    // Add to characters.json
     const charactersData = getAllCharacters();
     const searchName = name.toLowerCase();
     
     charactersData.characters[searchName] = character;
     
     fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(charactersData, null, 2));
+    
+    // Also save as individual file
+    saveCharacterToFile(name, character);
+    
     return character;
   } catch (error) {
     console.error('Error writing character:', error);
@@ -157,31 +291,63 @@ function setCharacter(name, type, description, appearance = '', initialMessage =
   }
 }
 
-// Mengatur karakter default
+/**
+ * Set default character
+ * @param {string} name - Character name
+ * @returns {object} Default character data
+ */
 function setDefaultCharacter(name) {
   const charactersData = getAllCharacters();
   const searchName = name.toLowerCase();
   
-  if (!charactersData.characters[searchName]) {
-    throw new Error(`Karakter "${name}" tidak ditemukan`);
-  }
+  // First check individual files
+  const fileCharacter = getCharacterFromFile(searchName);
   
-  charactersData.default = charactersData.characters[searchName];
+  if (fileCharacter) {
+    charactersData.default = fileCharacter;
+  } else if (charactersData.characters[searchName]) {
+    charactersData.default = charactersData.characters[searchName];
+  } else {
+    throw new Error(`Character "${name}" not found`);
+  }
   
   fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(charactersData, null, 2));
   return charactersData.default;
 }
 
-// Menghapus karakter
+/**
+ * Delete a character
+ * @param {string} name - Character name
+ * @returns {boolean} Success status
+ */
 function deleteCharacter(name) {
   const searchName = name.toLowerCase();
   const charactersData = getAllCharacters();
   
-  if (!charactersData.characters[searchName]) {
-    throw new Error(`Karakter "${name}" tidak ditemukan`);
+  // Check if character exists in characters.json
+  const characterExists = !!charactersData.characters[searchName];
+  
+  if (!characterExists) {
+    // Check if character exists as individual file
+    const safeName = searchName.replace(/\s+/g, '_');
+    const characterPath = path.join(CHARACTERS_DIR, safeName);
+    const configPath = path.join(characterPath, 'config.json');
+    
+    if (!fs.existsSync(configPath)) {
+      throw new Error(`Character "${name}" not found`);
+    }
+    
+    // Delete character directory
+    try {
+      fs.rmSync(characterPath, { recursive: true, force: true });
+      return true;
+    } catch (err) {
+      console.error(`Error deleting character directory ${characterPath}:`, err);
+      return false;
+    }
   }
   
-  // Jika karakter yang dihapus adalah default, atur defaultnya ke karakter pertama yang tersedia
+  // If character is the default, set default to another character
   if (charactersData.default.name.toLowerCase() === searchName) {
     const availableCharacters = Object.keys(charactersData.characters).filter(key => key !== searchName);
     
@@ -192,113 +358,129 @@ function deleteCharacter(name) {
     }
   }
   
+  // Remove from characters.json
   delete charactersData.characters[searchName];
-  
   fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(charactersData, null, 2));
+  
+  // Also delete individual file if it exists
+  const safeName = searchName.replace(/\s+/g, '_');
+  const characterPath = path.join(CHARACTERS_DIR, safeName);
+  
+  if (fs.existsSync(characterPath)) {
+    try {
+      fs.rmSync(characterPath, { recursive: true, force: true });
+    } catch (err) {
+      console.error(`Error deleting character directory ${characterPath}:`, err);
+    }
+  }
+  
   return true;
 }
 
-// Mengupdate atribut karakter (semua atribut)
+/**
+ * Update character attributes
+ * @param {string} name - Character name
+ * @param {object} attributes - Character attributes to update
+ * @returns {object} Updated character
+ */
 function updateCharacterAttributes(name, attributes = {}) {
-  const searchName = name.toLowerCase();
-  const charactersData = getAllCharacters();
+  const character = getCharacter(name);
   
-  if (!charactersData.characters[searchName]) {
-    throw new Error(`Karakter "${name}" tidak ditemukan`);
+  if (!character || character.name.toLowerCase() !== name.toLowerCase()) {
+    throw new Error(`Character "${name}" not found`);
   }
   
-  const character = charactersData.characters[searchName];
-  
-  // Update semua atribut yang disediakan
-  const validAttributes = [
-    'appearance', 'initialMessage', 'personality', 'background',
-    'relationships', 'quirks', 'likes', 'dislikes', 'goals', 'expressionPatterns'
-  ];
-  
-  validAttributes.forEach(attr => {
-    if (attributes[attr] !== undefined) {
-      character[attr] = attributes[attr];
-    }
+  // Apply updates
+  const updatedCharacter = { ...character };
+  Object.keys(attributes).forEach(key => {
+    updatedCharacter[key] = attributes[key];
   });
   
-  // Jika karakter ini adalah default, update juga default
-  if (charactersData.default.name.toLowerCase() === searchName) {
-    charactersData.default = character;
-  }
+  // Save to characters.json
+  const charactersData = getAllCharacters();
+  const searchName = name.toLowerCase();
   
-  charactersData.characters[searchName] = character;
+  charactersData.characters[searchName] = updatedCharacter;
+  
+  // If this is the default character, update it too
+  if (charactersData.default.name.toLowerCase() === searchName) {
+    charactersData.default = updatedCharacter;
+  }
   
   fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(charactersData, null, 2));
-  return character;
+  
+  // Also update individual file
+  saveCharacterToFile(name, updatedCharacter);
+  
+  return updatedCharacter;
 }
 
-// Mengekspor karakter ke file
+/**
+ * Export character to file
+ * @param {string} name - Character name
+ * @returns {string} Path to exported file
+ */
 function exportCharacterToFile(name) {
-  const searchName = name.toLowerCase();
-  const charactersData = getAllCharacters();
+  const character = getCharacter(name);
   
-  if (!charactersData.characters[searchName]) {
-    throw new Error(`Karakter "${name}" tidak ditemukan`);
+  if (!character || character.name.toLowerCase() !== name.toLowerCase()) {
+    throw new Error(`Character "${name}" not found`);
   }
   
-  const character = charactersData.characters[searchName];
+  const tempFilePath = path.join(TEMP_DIR, `${character.name.toLowerCase().replace(/\s+/g, '_')}_config.json`);
   
-  // Buat nama file yang aman
-  const safeFileName = character.name.toLowerCase().replace(/\s+/g, '_');
-  const filePath = path.join(TEMP_DIR, `${safeFileName}_config.json`);
+  // Write character to file
+  fs.writeFileSync(tempFilePath, JSON.stringify(character, null, 2));
   
-  try {
-    // Tulis karakter ke file JSON
-    fs.writeFileSync(filePath, JSON.stringify(character, null, 2));
-    return filePath;
-  } catch (error) {
-    console.error('Error exporting character to file:', error);
-    throw new Error(`Gagal mengekspor karakter: ${error.message}`);
-  }
+  return tempFilePath;
 }
 
-// Mengimpor karakter dari file
+/**
+ * Import character from file
+ * @param {string} filePath - Path to character file
+ * @returns {object} Imported character
+ */
 function importCharacterFromFile(filePath) {
-  try {
-    // Cek apakah file ada
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File tidak ditemukan: ${filePath}`);
-    }
-    
-    // Baca file JSON
-    const fileData = fs.readFileSync(filePath, 'utf8');
-    const characterData = JSON.parse(fileData);
-    
-    // Validasi data karakter
-    if (!characterData.name || !characterData.type || !characterData.description) {
-      throw new Error('File konfigurasi karakter tidak valid. Harus memiliki name, type, dan description.');
-    }
-    
-    // Set karakter baru/update dengan semua atribut yang tersedia
-    const additionalProps = {};
-    const validAdditionalProps = [
-      'personality', 'background', 'relationships', 'quirks', 
-      'likes', 'dislikes', 'goals', 'expressionPatterns'
-    ];
-    
-    validAdditionalProps.forEach(prop => {
-      if (characterData[prop] !== undefined) {
-        additionalProps[prop] = characterData[prop];
-      }
-    });
-    
-    return setCharacter(
-      characterData.name,
-      characterData.type,
-      characterData.description,
-      characterData.appearance || '',
-      characterData.initialMessage || '',
-      additionalProps
-    );
-  } catch (error) {
-    console.error('Error importing character from file:', error);
-    throw new Error(`Gagal mengimpor karakter: ${error.message}`);
+  if (!fs.existsSync(filePath)) {
+    throw new Error('Character file not found');
   }
+  
+  // Read and parse character file
+  const fileContent = fs.readFileSync(filePath, 'utf8');
+  let character;
+  
+  try {
+    character = JSON.parse(fileContent);
+  } catch (error) {
+    throw new Error('Invalid character file format');
+  }
+  
+  // Validate required fields
+  if (!character.name) {
+    throw new Error('Character file missing required field: name');
+  }
+  
+  if (!character.type) {
+    character.type = 'custom';
+  }
+  
+  if (!character.description) {
+    character.description = `Imported character ${character.name}`;
+  }
+  
+  // Ensure all required properties
+  ensureRequiredProperties(character);
+  
+  // Save to characters.json and individual file
+  const charactersData = getAllCharacters();
+  const searchName = character.name.toLowerCase();
+  
+  charactersData.characters[searchName] = character;
+  fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(charactersData, null, 2));
+  
+  saveCharacterToFile(character.name, character);
+  
+  return character;
 }
 
 module.exports = {
@@ -309,5 +491,6 @@ module.exports = {
   deleteCharacter,
   updateCharacterAttributes,
   exportCharacterToFile,
-  importCharacterFromFile
+  importCharacterFromFile,
+  ensureCharacterDirectory
 }; 

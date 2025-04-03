@@ -1,4 +1,4 @@
-// Perintah chat untuk berbicara dengan AI
+// Chat command for communicating with AI
 const { 
   getAIResponse, 
   getUserHistorySummary, 
@@ -6,59 +6,61 @@ const {
   generateNarrativeFromHistory
 } = require('../utils/gemini');
 const { EmbedBuilder } = require('discord.js');
+const { t } = require('../utils/i18n');
 
 module.exports = {
   name: 'chat',
-  description: 'Berbicara dengan AI sesuai karakter yang dipilih',
+  description: 'Talk with AI using the selected character',
   async execute(message, args) {
     try {
-      // Dapatkan pesan dari user
+      // Get message from user
       const query = args.join(' ');
       const userId = message.author.id;
       
-      // Cek jika user ingin melihat ringkasan memori
+      // Check if user wants to see memory summary
       if (query.toLowerCase() === 'memori' || 
           query.toLowerCase() === 'ingatan' || 
           query.toLowerCase() === 'riwayat' ||
-          query.toLowerCase() === 'ingat aku') {
+          query.toLowerCase() === 'ingat aku' ||
+          query.toLowerCase() === 'memory') {
         
-        // Coba dapatkan narasi yang ada atau buat yang baru
+        // Try to get existing narrative or create a new one
         let narrative = getUserNarrativeSummary(userId);
         
-        // Jika tidak ada narasi, coba buat narasi baru
+        // If no narrative exists, try to create a new one
         if (!narrative) {
-          await message.reply('Sedang membuat narasi dari percakapan kita...');
+          await message.reply(t('chat.creatingNarrative'));
           narrative = await generateNarrativeFromHistory(userId);
         }
         
-        // Jika masih tidak ada narasi, tampilkan ringkasan statistik sebagai fallback
+        // If still no narrative, show stats summary as fallback
         if (!narrative) {
           const summary = getUserHistorySummary(userId);
         
           if (typeof summary === 'string') {
             await message.reply(summary);
           } else {
-            // Format ringkasan memori sebagai fallback
-            const memoryReply = `**Ringkasan Percakapan Kita**\n\n` +
-              `Total pesan: ${summary.totalMessages}\n` +
-              `Pesan kamu: ${summary.userMessages}\n` +
-              `Pesan saya: ${summary.botMessages}\n` +
-              `Pertama kali bicara: ${summary.firstMessageDate}\n` +
-              `Terakhir bicara: ${summary.lastMessageDate}\n` +
-              `Durasi percakapan: ${summary.durationDays} hari\n\n` +
-              `Belum ada cukup percakapan untuk membuat narasi yang baik. Mari mengobrol lebih banyak! 😊`;
+            // Format memory summary as fallback
+            const memoryReply = `**${t('memory.conversationSummary')}**\n\n` +
+              `${t('memory.totalMessages')}: ${summary.totalMessages}\n` +
+              `${t('memory.yourMessages')}: ${summary.userMessages}\n` +
+              `${t('memory.myMessages')}: ${summary.botMessages}\n` +
+              `${t('memory.firstTalked')}: ${summary.firstMessageDate}\n` +
+              `${t('memory.lastTalked')}: ${summary.lastMessageDate}\n` +
+              `${t('memory.duration')}: ${summary.durationDays} ${t('memory.days')}\n\n` +
+              `${t('chat.noNarrative')}`;
             
             await message.reply(memoryReply);
           }
         } else {
-          // Kirim narasi dalam format embed yang menarik
+          // Send narrative in attractive embed format
           const narrativeEmbed = new EmbedBuilder()
             .setColor('#0099ff')
-            .setTitle('Ingatan Percakapan Kita')
+            .setTitle(t('chat.conversationMemory'))
             .setDescription(narrative)
             .setTimestamp()
             .setFooter({ 
-              text: 'Narasi berdasarkan percakapan kita',
+              text: t('chat.narrativeBased'),
               iconURL: message.client.user.displayAvatarURL()
             });
           
@@ -69,30 +71,30 @@ module.exports = {
       }
       
       if (!query) {
-        await message.reply('Silakan berikan pesan untuk direspon oleh AI.');
+        await message.reply(t('chat.provideMsgPrompt'));
         return;
       }
       
-      // Menampilkan indikator mengetik untuk efek natural
+      // Show typing indicator for natural effect
       await message.channel.sendTyping();
       
-      // Dapatkan jawaban dari AI
+      // Get response from AI
       const response = await getAIResponse(userId, query);
       
-      // Kirim respons langsung (tanpa embed) untuk mirip chat biasa
+      // Send response directly (without embed) to resemble normal chat
       await message.reply(response);
     } catch (error) {
       console.error('Error in chat command:', error);
       
-      // Pesan error yang lebih informatif berdasarkan tipe errornya
-      let errorMessage = 'Maaf, terjadi kesalahan saat berkomunikasi dengan AI.';
+      // More informative error message based on error type
+      let errorMessage = t('general.error');
       
       if (error.message.includes('rate limited') || error.message.includes('coba lagi dalam')) {
         errorMessage = error.message;
       } else if (error.message.includes('quota') || error.message.includes('429')) {
-        errorMessage = 'Maaf, kuota API Gemini sudah tercapai. Bot akan otomatis mencoba model alternatif atau silakan coba lagi nanti.';
+        errorMessage = 'Sorry, the Gemini API quota has been reached. The bot will automatically try an alternative model or please try again later.';
       } else if (error.message.includes('Tidak bisa terhubung ke Gemini API')) {
-        errorMessage = 'Saat ini semua model AI sedang tidak tersedia. Silakan coba lagi dalam beberapa menit.';
+        errorMessage = 'Currently all AI models are unavailable. Please try again in a few minutes.';
       }
       
       await message.reply(errorMessage);

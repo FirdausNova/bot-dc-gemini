@@ -1,349 +1,249 @@
-// Import dependencies
-const { Client, GatewayIntentBits, Collection, Events, EmbedBuilder } = require('discord.js');
+// Main Discord bot application
+const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const gemini = require('./utils/gemini');
+const characterManager = require('./config/characters');
 require('dotenv').config();
-const { getAIResponse, getUserHistorySummary, getUserNarrativeSummary, generateNarrativeFromHistory } = require('./utils/gemini');
-const { getCharacter } = require('./config/characters');
 
-// Inisialisasi client Discord
+// Load environment variables or set defaults
+const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+const BOT_PREFIX = process.env.BOT_PREFIX || '!';
+const AUTO_RESPOND_CHANNEL_ID = process.env.AUTO_RESPOND_CHANNEL_ID || '';
+
+// Create a new Discord client with necessary intents
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.DirectMessages
   ]
 });
 
-// Simpan prefix bot dari .env
-const prefix = process.env.BOT_PREFIX || '!';
-
-// Channel khusus untuk auto-respond
-const autoRespondChannelId = process.env.AUTO_RESPOND_CHANNEL_ID;
-
-// Koleksi untuk menyimpan perintah
+// Initialize collections for commands and slash commands
 client.commands = new Collection();
 client.slashCommands = new Collection();
 
-// Simpan status loading per channel
-const loadingStatus = new Map();
+// Flag to track loading status of commands
+const isLoading = new Map();
 
-// Simpan data konteks per user
-const userContexts = new Map();
-
-// Load perintah legacy (dengan prefix)
+// Path to commands directory
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
+// Load all command files
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
   
-  if ('name' in command && 'execute' in command) {
-    client.commands.set(command.name, command);
-    console.log(`Perintah legacy ${command.name} telah dimuat`);
+  // Set command in collection with its name as key
+  if ('data' in command && 'execute' in command) {
+    client.commands.set(command.data.name, command);
+    console.log(`Loaded command: ${command.data.name}`);
   } else {
-    console.log(`Perintah di ${filePath} tidak memiliki properti 'name' atau 'execute' yang diperlukan`);
+    console.warn(`Command at ${filePath} is missing required "data" or "execute" property`);
   }
 }
 
-// Load perintah slash (/)
+// Load slash commands if directory exists
 const slashCommandsPath = path.join(__dirname, 'slash-commands');
 if (fs.existsSync(slashCommandsPath)) {
   const slashCommandFiles = fs.readdirSync(slashCommandsPath).filter(file => file.endsWith('.js'));
 
+  // Load all slash command files
   for (const file of slashCommandFiles) {
     const filePath = path.join(slashCommandsPath, file);
     const command = require(filePath);
     
+    // Set slash command in collection with its name as key
     if ('data' in command && 'execute' in command) {
       client.slashCommands.set(command.data.name, command);
-      console.log(`Perintah slash ${command.data.name} telah dimuat`);
+      console.log(`Loaded slash command: ${command.data.name}`);
     } else {
-      console.log(`Perintah slash di ${filePath} tidak memiliki properti 'data' atau 'execute' yang diperlukan`);
+      console.warn(`Slash command at ${filePath} is missing required "data" or "execute" property`);
     }
   }
 }
 
-// Event handler ketika bot siap
+// When bot is ready
 client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
-  console.log(`Support untuk perintah legacy (${prefix}): ${client.commands.size} perintah`);
-  console.log(`Support untuk perintah slash (/): ${client.slashCommands.size} perintah`);
-});
-
-// Mengirim pesan 'sedang mengetik' ke channel untuk efek alami
-async function sendTypingIndicator(channel) {
-  try {
-    await channel.sendTyping();
-  } catch (error) {
-    console.error('Error sending typing indicator:', error);
-  }
-}
-
-// Fungsi untuk mengirim respons AI di channel auto-respond (style natural chat)
-async function sendNaturalAIResponse(message, messageContent) {
-  try {
-    const channelId = message.channelId;
-    const userId = message.author.id;
-    
-    // Simpan konteks percakapan terakhir
-    if (!userContexts.has(userId)) {
-      userContexts.set(userId, {
-        lastMessageTime: Date.now(),
-        messageCount: 0
-      });
-    } else {
-      const context = userContexts.get(userId);
-      context.lastMessageTime = Date.now();
-      context.messageCount += 1;
-      userContexts.set(userId, context);
-    }
-    
-    // Cek apakah channel sedang dalam status loading
-    if (loadingStatus.get(channelId)) {
-      return; // Abaikan jika sedang loading
-    }
-    
-    // Set channel ke status loading
-    loadingStatus.set(channelId, true);
-    
-    // Kirim indikator mengetik selama AI berpikir
-    const typingInterval = setInterval(() => {
-      sendTypingIndicator(message.channel);
-    }, 5000); // Refresh typing indicator setiap 5 detik
-    
-    // Dapatkan karakter default
-    const character = getCharacter();
-    
-    // Periksa jika pengguna hanya mengetik kata-kata trigger untuk ringkasan memori
-    if (messageContent.toLowerCase() === 'ingatan' || 
-        messageContent.toLowerCase() === 'memori' || 
-        messageContent.toLowerCase() === 'riwayat' ||
-        messageContent.toLowerCase() === 'ingat aku') {
-      clearInterval(typingInterval);
-      
-      // Coba dapatkan narasi yang ada atau buat yang baru
-      let narrative = getUserNarrativeSummary(userId);
-      
-      // Jika tidak ada narasi, coba buat narasi baru
-      if (!narrative) {
-        await message.reply('Sedang membuat narasi dari percakapan kita...');
-        narrative = await generateNarrativeFromHistory(userId, character.name);
-      }
-      
-      // Jika masih tidak ada narasi, tampilkan ringkasan statistik sebagai fallback
-      if (!narrative) {
-        const summary = getUserHistorySummary(userId);
-        
-        if (typeof summary === 'string') {
-          await message.reply(summary);
-        } else {
-          // Format ringkasan memori sebagai fallback
-          const memoryReply = `**Ringkasan Percakapan Kita**\n\n` +
-            `Total pesan: ${summary.totalMessages}\n` +
-            `Pesan kamu: ${summary.userMessages}\n` +
-            `Pesan saya: ${summary.botMessages}\n` +
-            `Pertama kali bicara: ${summary.firstMessageDate}\n` +
-            `Terakhir bicara: ${summary.lastMessageDate}\n` +
-            `Durasi percakapan: ${summary.durationDays} hari\n\n` +
-            `Belum ada cukup percakapan untuk membuat narasi yang baik. Mari mengobrol lebih banyak! 😊`;
-          
-          await message.reply(memoryReply);
-        }
-      } else {
-        // Kirim narasi dalam format embed yang menarik
-        // Potong narasi jika terlalu panjang untuk embed Discord (max 4096 karakter)
-        const maxDescriptionLength = 4000;
-        let trimmedNarrative = narrative;
-        
-        if (narrative.length > maxDescriptionLength) {
-          trimmedNarrative = narrative.substring(0, maxDescriptionLength) + '... *(terpotong karena terlalu panjang)*';
-        }
-        
-        const narrativeEmbed = new EmbedBuilder()
-          .setColor('#0099ff')
-          .setTitle('Ingatan Percakapan Kita')
-          .setDescription(trimmedNarrative)
-          .setTimestamp()
-          .setFooter({ 
-            text: 'Narasi berdasarkan percakapan kita',
-            iconURL: message.client.user.displayAvatarURL()
-          });
-        
-        await message.reply({ embeds: [narrativeEmbed] });
-      }
-      
-      // Set channel ke status tidak loading
-      loadingStatus.set(channelId, false);
-      return;
-    }
-    
-    try {
-      // Dapatkan respons dari AI dengan menggunakan histori percakapan
-      const response = await getAIResponse(userId, messageContent);
-      
-      // Hentikan mengetik
-      clearInterval(typingInterval);
-      
-      // Cek panjang respons dan potong jika terlalu panjang (batas Discord 2000 karakter)
-      const maxMessageLength = 1900; // Simpan margin untuk reply context
-      let formattedResponse = response;
-      
-      // Jika respons terlalu panjang, potong dan tambahkan notifikasi pemotongan
-      if (response.length > maxMessageLength) {
-        formattedResponse = response.substring(0, maxMessageLength) + '\n\n... *(respons terpotong karena terlalu panjang)*';
-      }
-      
-      // Kirim respons langsung (tanpa embed) untuk mirip chat biasa
-      await message.reply(formattedResponse);
-    } catch (error) {
-      // Hentikan mengetik
-      clearInterval(typingInterval);
-      
-      console.error('Error responding to message:', error);
-      
-      // Pesan error yang lebih informatif berdasarkan tipe errornya
-      let errorMessage = 'Maaf, terjadi kesalahan saat berkomunikasi dengan AI.';
-      
-      if (error.message.includes('rate limited') || error.message.includes('coba lagi dalam')) {
-        errorMessage = error.message;
-      } else if (error.message.includes('quota') || error.message.includes('429')) {
-        errorMessage = 'Maaf, kuota API Gemini sudah tercapai. Bot akan otomatis mencoba model alternatif atau silakan coba lagi nanti.';
-      } else if (error.message.includes('Tidak bisa terhubung ke Gemini API')) {
-        errorMessage = 'Saat ini semua model AI sedang tidak tersedia. Silakan coba lagi dalam beberapa menit.';
-      } else if (error.message.includes('Must be 2000 or fewer in length') || error.message.includes('50035')) {
-        errorMessage = 'Respons terlalu panjang. Coba kirim pesan yang lebih singkat atau batasi konteks percakapan.';
-      }
-      
-      await message.reply(errorMessage);
-    } finally {
-      // Set channel ke status tidak loading
-      loadingStatus.set(channelId, false);
-    }
-  } catch (error) {
-    console.error('Error in natural response:', error);
-    loadingStatus.set(message.channelId, false);
-  }
-}
-
-// Fungsi untuk mengirim respons AI dengan embed
-async function sendEmbedAIResponse(message, messageContent) {
-  try {
-    // Tampilkan loading status
-    const loadingMessage = await message.reply('Sedang berpikir...');
-    
-    // Dapatkan karakter default
-    const character = getCharacter();
-    
-    // Dapatkan respons dari AI
-    const response = await getAIResponse(message.author.id, messageContent);
-    
-    // Buat embed untuk respons
-    const embed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setAuthor({
-        name: character.name,
-        iconURL: message.client.user.displayAvatarURL()
-      })
-      .setDescription(response)
-      .setFooter({
-        text: `Diminta oleh ${message.author.tag}`,
-        iconURL: message.author.displayAvatarURL()
-      })
-      .setTimestamp();
-    
-    // Edit pesan loading dengan respons
-    await loadingMessage.edit({ content: null, embeds: [embed] });
-  } catch (error) {
-    console.error('Error responding to message:', error);
-    
-    // Pesan error yang lebih informatif
-    let errorMessage = 'Maaf, terjadi kesalahan saat berkomunikasi dengan AI.';
-    
-    if (error.message.includes('rate limited') || error.message.includes('coba lagi dalam')) {
-      errorMessage = error.message;
-    } else if (error.message.includes('quota') || error.message.includes('429')) {
-      errorMessage = 'Maaf, kuota API Gemini sudah tercapai. Bot akan otomatis mencoba model alternatif atau silakan coba lagi nanti.';
-    } else if (error.message.includes('Tidak bisa terhubung ke Gemini API')) {
-      errorMessage = 'Saat ini semua model AI sedang tidak tersedia. Silakan coba lagi dalam beberapa menit.';
-    }
-    
-    await message.reply(errorMessage);
-  }
-}
-
-// Event handler untuk pesan (perintah legacy)
-client.on(Events.MessageCreate, async message => {
-  // Abaikan pesan dari bot
-  if (message.author.bot) return;
-
-  // Periksa jika pesan berada di channel auto-respond
-  if (autoRespondChannelId && message.channelId === autoRespondChannelId) {
-    // Auto-respond tanpa prefix dengan style chat biasa
-    await sendNaturalAIResponse(message, message.content);
-    return;
-  }
   
-  // Periksa jika ada pembatasan channel
-  const allowedChannels = process.env.ALLOWED_CHANNEL_IDS 
-    ? process.env.ALLOWED_CHANNEL_IDS.split(',') 
-    : null;
+  // Set bot status/activity
+  client.user.setActivity('with AI', { type: ActivityType.Playing });
   
-  if (allowedChannels && !allowedChannels.includes(message.channelId)) return;
-  
-  // Periksa jika pesan dimulai dengan prefix
-  if (!message.content.startsWith(prefix)) return;
-  
-  // Parse argumen perintah
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-  
-  // Periksa jika perintah ada
-  if (!client.commands.has(commandName)) return;
-  
-  const command = client.commands.get(commandName);
-  
-  try {
-    // Eksekusi perintah
-    await command.execute(message, args);
-  } catch (error) {
-    console.error(error);
-    await message.reply('Terjadi kesalahan saat menjalankan perintah!');
+  // Log registered commands
+  console.log(`Registered commands: ${Array.from(client.commands.keys()).join(', ')}`);
+  if (client.slashCommands.size > 0) {
+    console.log(`Registered slash commands: ${Array.from(client.slashCommands.keys()).join(', ')}`);
   }
 });
 
-// Event handler untuk interaksi (perintah slash)
+// Handle slash command interactions
 client.on(Events.InteractionCreate, async interaction => {
-  // Abaikan interaksi selain command
-  if (!interaction.isCommand()) return;
-  
-  // Dapatkan perintah slash dari koleksi
+  if (!interaction.isChatInputCommand()) return;
+
   const command = client.slashCommands.get(interaction.commandName);
-  
-  // Jika perintah tidak ditemukan, abaikan
   if (!command) return;
-  
+
   try {
-    // Eksekusi perintah
     await command.execute(interaction);
   } catch (error) {
     console.error(`Error executing slash command ${interaction.commandName}:`, error);
     
-    // Respond dengan pesan error
-    const errorContent = { 
-      content: 'Terjadi kesalahan saat menjalankan perintah ini!', 
-      ephemeral: true 
-    };
+    const errorMessage = 'There was an error while executing this command.';
     
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(errorContent);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: errorMessage, ephemeral: true });
     } else {
-      await interaction.reply(errorContent);
+      await interaction.reply({ content: errorMessage, ephemeral: true });
     }
   }
 });
 
-// Login dengan token
-client.login(process.env.DISCORD_TOKEN); 
+// Handle autocomplete interactions
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isAutocomplete()) return;
+  
+  const command = client.slashCommands.get(interaction.commandName);
+  
+  if (!command || !command.autocomplete) return;
+  
+  try {
+    await command.autocomplete(interaction);
+  } catch (error) {
+    console.error(`Error handling autocomplete for ${interaction.commandName}:`, error);
+  }
+});
+
+// Handle message creation events
+client.on(Events.MessageCreate, async message => {
+  // Ignore messages from bots or non-text channels
+  if (message.author.bot || !message.channel.isTextBased()) return;
+  
+  // Get user ID for tracking conversation context
+  const userId = message.author.id;
+  
+  // Process message content
+  const content = message.content.trim();
+  
+  // Handle commands and AI responses
+  if (content.startsWith(BOT_PREFIX)) {
+    // Legacy command handling
+    handleLegacyCommand(message, content.slice(BOT_PREFIX.length).trim());
+  } 
+  // Auto-respond in designated channels or direct messages
+  else if (
+    message.channel.id === AUTO_RESPOND_CHANNEL_ID || 
+    message.channel.type === 'DM'
+  ) {
+    // Check for ongoing request
+    if (isLoading.get(userId)) {
+      try {
+        await message.reply("Saya masih memproses permintaan sebelumnya. Mohon tunggu sebentar.");
+      } catch (error) {
+        console.error('Error sending busy message:', error);
+      }
+      return;
+    }
+
+    // Set loading status
+    isLoading.set(userId, true);
+    
+    // Show typing indicator
+    try {
+      await message.channel.sendTyping();
+    } catch (error) {
+      console.error('Error showing typing indicator:', error);
+    }
+
+    try {
+      // Get AI response
+      const aiResponse = await gemini.getAIResponse(userId, content);
+      
+      // Add messages to history is now handled inside getAIResponse
+      
+      // Check if response is multipart
+      if (aiResponse.multipart) {
+        console.log(`Sending multipart response (${aiResponse.parts.length} parts)`);
+        
+        // Send each part as a separate message
+        for (const part of aiResponse.parts) {
+          // Show typing before each message
+          await message.channel.sendTyping();
+          
+          // Send message
+          await message.channel.send({
+            content: part,
+            reply: { messageReference: message.id }
+          });
+          
+          // Small delay between messages to look more natural
+          if (aiResponse.parts.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      } else {
+        // Reply with single AI response
+        await message.reply(aiResponse.text);
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      try {
+        await message.reply(`Maaf, saya tidak dapat memproses permintaan Anda: ${error.message}`);
+      } catch (replyError) {
+        console.error('Error sending error reply:', replyError);
+      }
+    } finally {
+      // Clear loading status
+      isLoading.set(userId, false);
+    }
+  }
+});
+
+// Function to handle legacy (prefix) commands
+async function handleLegacyCommand(message, commandString) {
+  const userId = message.author.id;
+  
+  // Check if user has an ongoing request
+  if (isLoading.get(userId)) {
+    try {
+      await message.reply("I'm still processing your previous request. Please wait a moment.");
+    } catch (error) {
+      console.error('Error sending busy message:', error);
+    }
+    return;
+  }
+  
+  // Parse command and arguments
+  const args = commandString.split(/\s+/);
+  const commandName = args.shift().toLowerCase();
+  
+  // Get command from collection
+  const command = client.commands.get(commandName);
+  
+  // If command doesn't exist, return
+  if (!command) return;
+  
+  // Set loading status
+  isLoading.set(userId, true);
+  
+  try {
+    // Execute command
+    await command.execute(message, args);
+  } catch (error) {
+    console.error(`Error executing command ${commandName}:`, error);
+    try {
+      await message.reply('There was an error trying to execute that command.');
+    } catch (replyError) {
+      console.error('Error sending error reply:', replyError);
+    }
+  } finally {
+    // Clear loading status
+    isLoading.set(userId, false);
+  }
+}
+
+// Login to Discord with token
+client.login(BOT_TOKEN); 

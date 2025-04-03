@@ -1,4 +1,4 @@
-// Perintah untuk mengelola karakter AI
+// Command for managing AI characters
 const { EmbedBuilder } = require('discord.js');
 const { 
   getAllCharacters, 
@@ -22,10 +22,10 @@ const path = require('path');
 
 module.exports = {
   name: 'character',
-  description: 'Mengelola karakter AI untuk bot',
+  description: 'Manage AI characters for the bot',
   async execute(message, args) {
     if (!args.length) {
-      return message.reply('Silakan tentukan subperintah: `list`, `add`, `set`, `delete`, `info`, `appearance`, `message`, `export`, `import`, `template`.');
+      return message.reply('Please specify a subcommand: `list`, `add`, `set`, `delete`, `info`, `appearance`, `message`, `export`, `import`, `template`.');
     }
     
     const subCommand = args[0].toLowerCase();
@@ -37,7 +37,7 @@ module.exports = {
         
         case 'add':
           if (args.length < 3) {
-            return message.reply('Penggunaan: `!character add <nama> <tipe> <deskripsi>`');
+            return message.reply('Usage: `!character add <name> <type> <description>`');
           }
           
           const name = args[1];
@@ -48,14 +48,14 @@ module.exports = {
         
         case 'set':
           if (args.length < 2) {
-            return message.reply('Penggunaan: `!character set <nama>`');
+            return message.reply('Usage: `!character set <name>`');
           }
           
           return handleSetDefaultCharacter(message, args[1]);
         
         case 'delete':
           if (args.length < 2) {
-            return message.reply('Penggunaan: `!character delete <nama>`');
+            return message.reply('Usage: `!character delete <name>`');
           }
           
           return handleDeleteCharacter(message, args[1]);
@@ -63,7 +63,7 @@ module.exports = {
         case 'appearance':
         case 'penampilan':
           if (args.length < 3) {
-            return message.reply('Penggunaan: `!character appearance <nama> <deskripsi_penampilan>`');
+            return message.reply('Usage: `!character appearance <name> <appearance_description>`');
           }
           
           const charName = args[1];
@@ -74,7 +74,7 @@ module.exports = {
         case 'message':
         case 'pesan':
           if (args.length < 3) {
-            return message.reply('Penggunaan: `!character message <nama> <pesan_awal>`');
+            return message.reply('Usage: `!character message <name> <initial_message>`');
           }
           
           const charNameForMsg = args[1];
@@ -85,7 +85,7 @@ module.exports = {
         case 'export':
         case 'ekspor':
           if (args.length < 2) {
-            return message.reply('Penggunaan: `!character export <nama>` - Mengekspor konfigurasi karakter ke file.');
+            return message.reply('Usage: `!character export <name>` - Export character configuration to file.');
           }
           
           return handleExportCharacter(message, args[1]);
@@ -93,7 +93,7 @@ module.exports = {
         case 'import':
         case 'impor':
           if (message.attachments.size === 0) {
-            return message.reply('Silakan lampirkan file konfigurasi karakter saat menjalankan perintah ini. Contoh: `!character import` dengan file terlampir.');
+            return message.reply('Please attach a character configuration file when running this command. Example: `!character import` with attached file.');
           }
           
           return handleImportCharacter(message);
@@ -112,26 +112,26 @@ module.exports = {
               
             case 'info':
               if (args.length < 3) {
-                return message.reply('Penggunaan: `!character template info <nama_template>` - Menampilkan informasi detail template.');
+                return message.reply('Usage: `!character template info <template_name>` - Show detailed template info.');
               }
               return handleTemplateInfo(message, args[2]);
               
             case 'use':
               if (args.length < 4) {
-                return message.reply('Penggunaan: `!character template use <nama_template> <nama_karakter>` - Membuat karakter baru dari template.');
+                return message.reply('Usage: `!character template use <template_name> <character_name>` - Create new character from template.');
               }
               return handleUseTemplate(message, args[2], args[3]);
               
             case 'add':
               if (args.length < 3) {
-                return message.reply('Penggunaan: `!character template add <nama_template> <nama_karakter>` - Menambahkan karakter yang ada sebagai template baru.');
+                return message.reply('Usage: `!character template add <template_name> <character_name>` - Add existing character as a new template.');
               }
               return handleAddTemplate(message, args[2], args[3]);
               
             case 'delete':
             case 'remove':
               if (args.length < 3) {
-                return message.reply('Penggunaan: `!character template delete <nama_template>` - Menghapus template karakter.');
+                return message.reply('Usage: `!character template delete <template_name>` - Delete character template.');
               }
               return handleDeleteTemplate(message, args[2]);
               
@@ -140,7 +140,7 @@ module.exports = {
               return handleExportBlankTemplate(message);
               
             default:
-              return message.reply('Subperintah template tidak valid. Gunakan: `list`, `info`, `use`, `add`, `delete`, atau `blank`.');
+              return message.reply('Invalid template subcommand. Use: `list`, `info`, `use`, `add`, `delete`, or `blank`.');
           }
         
         case 'info':
@@ -148,7 +148,7 @@ module.exports = {
           return handleCharacterInfo(message, targetName);
         
         default:
-          return message.reply('Subperintah tidak valid. Gunakan: `list`, `add`, `set`, `delete`, `appearance`, `message`, `export`, `import`, `template`, atau `info`.');
+          return message.reply('Invalid subcommand. Use: `list`, `add`, `set`, `delete`, `appearance`, `message`, `export`, `import`, `template`, or `info`.');
       }
     } catch (error) {
       console.error('Error in character command:', error);
@@ -157,20 +157,20 @@ module.exports = {
   }
 };
 
-// Menampilkan daftar karakter
+// Display character list
 async function handleListCharacters(message) {
   const charactersData = getAllCharacters();
   const defaultCharacter = charactersData.default;
   const characters = Object.values(charactersData.characters);
   
   if (!characters.length) {
-    return message.reply('Tidak ada karakter yang tersedia.');
+    return message.reply('No characters available.');
   }
   
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('Daftar Karakter AI')
-    .setDescription(`Karakter Default: **${defaultCharacter.name}** (${defaultCharacter.type})`)
+    .setTitle('AI Character List')
+    .setDescription(`Default Character: **${defaultCharacter.name}** (${defaultCharacter.type})`)
     .addFields(
       characters.map(char => {
         return {
@@ -180,7 +180,7 @@ async function handleListCharacters(message) {
       })
     )
     .setFooter({
-      text: `Total: ${characters.length} karakter`,
+      text: `Total: ${characters.length} characters`,
       iconURL: message.client.user.displayAvatarURL()
     })
     .setTimestamp();
@@ -188,16 +188,16 @@ async function handleListCharacters(message) {
   return message.reply({ embeds: [embed] });
 }
 
-// Menampilkan informasi karakter
+// Display character information
 async function handleCharacterInfo(message, name) {
   const character = getCharacter(name);
   
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle(`Karakter: ${character.name}`)
+    .setTitle(`Character: ${character.name}`)
     .addFields([
       {
-        name: 'Tipe',
+        name: 'Type',
         value: character.type,
         inline: true
       },
@@ -207,28 +207,28 @@ async function handleCharacterInfo(message, name) {
         inline: true
       },
       {
-        name: 'Deskripsi',
+        name: 'Description',
         value: character.description
       }
     ])
     .setTimestamp()
     .setFooter({
-      text: `Karakter AI`,
+      text: `AI Character`,
       iconURL: message.client.user.displayAvatarURL()
     });
   
-  // Tambahkan informasi penampilan jika ada
+  // Add appearance information if available
   if (character.appearance && character.appearance.trim() !== '') {
     embed.addFields({
-      name: 'Penampilan',
+      name: 'Appearance',
       value: character.appearance
     });
   }
   
-  // Tambahkan informasi pesan awal jika ada
+  // Add initial message if available
   if (character.initialMessage && character.initialMessage.trim() !== '') {
     embed.addFields({
-      name: 'Pesan Awal',
+      name: 'Initial Message',
       value: character.initialMessage
     });
   }
@@ -236,33 +236,33 @@ async function handleCharacterInfo(message, name) {
   return message.reply({ embeds: [embed] });
 }
 
-// Menambahkan karakter baru
+// Add a new character
 async function handleAddCharacter(message, name, type, description) {
   try {
     const character = setCharacter(name, type, description);
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Karakter Ditambahkan')
-      .setDescription(`Karakter baru telah ditambahkan!`)
+      .setTitle('Character Added')
+      .setDescription(`New character has been added!`)
       .addFields([
         {
-          name: 'Nama',
+          name: 'Name',
           value: character.name,
           inline: true
         },
         {
-          name: 'Tipe',
+          name: 'Type',
           value: character.type,
           inline: true
         },
         {
-          name: 'Deskripsi',
+          name: 'Description',
           value: character.description
         }
       ])
       .setFooter({
-        text: 'Gunakan !character appearance dan !character message untuk menambahkan penampilan dan pesan awal',
+        text: 'Use !character appearance and !character message to add appearance and initial message',
         iconURL: message.client.user.displayAvatarURL()
       })
       .setTimestamp();
@@ -273,25 +273,25 @@ async function handleAddCharacter(message, name, type, description) {
   }
 }
 
-// Mengupdate deskripsi penampilan karakter
+// Update character appearance
 async function handleUpdateAppearance(message, name, appearance) {
   try {
-    // Cek apakah karakter ada
+    // Check if character exists
     const originalCharacter = getCharacter(name);
     if (!originalCharacter || originalCharacter.name.toLowerCase() !== name.toLowerCase()) {
-      return message.reply(`Karakter "${name}" tidak ditemukan.`);
+      return message.reply(`Character "${name}" not found.`);
     }
     
-    // Update penampilan karakter
+    // Update character appearance
     const updatedCharacter = updateCharacterAttributes(name, { appearance });
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Penampilan Karakter Diperbarui')
-      .setDescription(`Penampilan untuk **${updatedCharacter.name}** telah diperbarui!`)
+      .setTitle('Character Appearance Updated')
+      .setDescription(`Appearance for **${updatedCharacter.name}** has been updated!`)
       .addFields([
         {
-          name: 'Penampilan Baru',
+          name: 'New Appearance',
           value: updatedCharacter.appearance
         }
       ])
@@ -303,25 +303,25 @@ async function handleUpdateAppearance(message, name, appearance) {
   }
 }
 
-// Mengupdate pesan awal karakter
+// Update character initial message
 async function handleUpdateInitialMessage(message, name, initialMessage) {
   try {
-    // Cek apakah karakter ada
+    // Check if character exists
     const originalCharacter = getCharacter(name);
     if (!originalCharacter || originalCharacter.name.toLowerCase() !== name.toLowerCase()) {
-      return message.reply(`Karakter "${name}" tidak ditemukan.`);
+      return message.reply(`Character "${name}" not found.`);
     }
     
-    // Update pesan awal karakter
+    // Update character initial message
     const updatedCharacter = updateCharacterAttributes(name, { initialMessage });
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Pesan Awal Karakter Diperbarui')
-      .setDescription(`Pesan awal untuk **${updatedCharacter.name}** telah diperbarui!`)
+      .setTitle('Character Initial Message Updated')
+      .setDescription(`Initial message for **${updatedCharacter.name}** has been updated!`)
       .addFields([
         {
-          name: 'Pesan Awal Baru',
+          name: 'New Initial Message',
           value: updatedCharacter.initialMessage
         }
       ])
@@ -333,22 +333,22 @@ async function handleUpdateInitialMessage(message, name, initialMessage) {
   }
 }
 
-// Mengekspor karakter ke file
+// Export character to file
 async function handleExportCharacter(message, name) {
   try {
-    // Ekspor karakter ke file
+    // Export character to file
     const filePath = await exportCharacterToFile(name);
     
-    // Kirim file ke pengguna
+    // Send file to user
     await message.reply({
-      content: `Konfigurasi karakter **${name}** telah diekspor!`,
+      content: `Character configuration for **${name}** has been exported!`,
       files: [{
         attachment: filePath,
         name: `${name.toLowerCase().replace(/\s+/g, '_')}_config.json`
       }]
     });
     
-    // Hapus file setelah dikirim
+    // Delete file after sending
     setTimeout(() => {
       try {
         if (fs.existsSync(filePath)) {
@@ -364,35 +364,35 @@ async function handleExportCharacter(message, name) {
   }
 }
 
-// Mengimpor karakter dari file
+// Import character from file
 async function handleImportCharacter(message) {
   try {
-    // Cek apakah file tersedia dari lampiran pesan
+    // Check if file is available from message attachment
     const attachment = message.attachments.first();
     
     if (!attachment) {
-      return message.reply('Silakan lampirkan file konfigurasi karakter saat menjalankan perintah ini.');
+      return message.reply('Please attach a character configuration file when running this command.');
     }
     
-    // Buat direktori temp jika belum ada
+    // Create temp directory if it doesn't exist
     const tempDir = path.join(__dirname, '../../temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-    // Buat nama file temporary
+    // Create temporary filename
     const tempFilePath = path.join(tempDir, `temp_${Date.now()}.json`);
     
-    // Unduh file lampiran
+    // Download attachment file
     const response = await fetch(attachment.url);
     const fileContent = await response.text();
     
     fs.writeFileSync(tempFilePath, fileContent);
     
-    // Impor karakter dari file
+    // Import character from file
     const character = await importCharacterFromFile(tempFilePath);
     
-    // Hapus file temporary
+    // Delete temporary file
     try {
       fs.unlinkSync(tempFilePath);
     } catch (err) {
@@ -401,33 +401,33 @@ async function handleImportCharacter(message) {
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Karakter Diimpor')
-      .setDescription(`Karakter **${character.name}** telah berhasil diimpor!`)
+      .setTitle('Character Imported')
+      .setDescription(`Character **${character.name}** has been successfully imported!`)
       .addFields([
         {
-          name: 'Tipe',
+          name: 'Type',
           value: character.type,
           inline: true
         },
         {
-          name: 'Deskripsi',
+          name: 'Description',
           value: character.description
         }
       ])
       .setTimestamp();
     
-    // Tambahkan informasi penampilan jika ada
+    // Add appearance information if available
     if (character.appearance && character.appearance.trim() !== '') {
       embed.addFields({
-        name: 'Penampilan',
+        name: 'Appearance',
         value: character.appearance
       });
     }
     
-    // Tambahkan informasi pesan awal jika ada
+    // Add initial message if available
     if (character.initialMessage && character.initialMessage.trim() !== '') {
       embed.addFields({
-        name: 'Pesan Awal',
+        name: 'Initial Message',
         value: character.initialMessage
       });
     }
@@ -439,23 +439,23 @@ async function handleImportCharacter(message) {
   }
 }
 
-// Mengatur karakter default
+// Set default character
 async function handleSetDefaultCharacter(message, name) {
   try {
     const character = setDefaultCharacter(name);
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Karakter Default Diubah')
-      .setDescription(`Karakter default telah diubah menjadi **${character.name}**!`)
+      .setTitle('Default Character Changed')
+      .setDescription(`Default character has been changed to **${character.name}**!`)
       .addFields([
         {
-          name: 'Tipe',
+          name: 'Type',
           value: character.type,
           inline: true
         },
         {
-          name: 'Deskripsi',
+          name: 'Description',
           value: character.description
         }
       ])
@@ -467,7 +467,7 @@ async function handleSetDefaultCharacter(message, name) {
   }
 }
 
-// Menghapus karakter
+// Delete character
 async function handleDeleteCharacter(message, name) {
   try {
     const success = deleteCharacter(name);
@@ -477,11 +477,11 @@ async function handleDeleteCharacter(message, name) {
       
       const embed = new EmbedBuilder()
         .setColor('#ff0000')
-        .setTitle('Karakter Dihapus')
-        .setDescription(`Karakter **${name}** telah dihapus!`)
+        .setTitle('Character Deleted')
+        .setDescription(`Character **${name}** has been deleted!`)
         .addFields([
           {
-            name: 'Karakter Default Saat Ini',
+            name: 'Current Default Character',
             value: `${newDefault.name} (${newDefault.type})`
           }
         ])
@@ -489,26 +489,26 @@ async function handleDeleteCharacter(message, name) {
       
       return message.reply({ embeds: [embed] });
     } else {
-      return message.reply(`Gagal menghapus karakter "${name}".`);
+      return message.reply(`Failed to delete character "${name}".`);
     }
   } catch (error) {
     return message.reply(`Error: ${error.message}`);
   }
 }
 
-// Menampilkan daftar template karakter
+// Display character template list
 async function handleListTemplates(message) {
   const templates = getAllTemplates();
   const templateNames = Object.keys(templates);
   
   if (!templateNames.length) {
-    return message.reply('Tidak ada template karakter yang tersedia.');
+    return message.reply('No character templates available.');
   }
   
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('Daftar Template Karakter AI')
-    .setDescription('Template ini dapat digunakan untuk membuat karakter baru dengan cepat.')
+    .setTitle('AI Character Template List')
+    .setDescription('These templates can be used to quickly create new characters.')
     .addFields(
       templateNames.map(name => {
         const template = templates[name];
@@ -519,7 +519,7 @@ async function handleListTemplates(message) {
       })
     )
     .setFooter({
-      text: `Total: ${templateNames.length} template | Gunakan !character template info <nama> untuk detail`,
+      text: `Total: ${templateNames.length} templates | Use !character template info <name> for details`,
       iconURL: message.client.user.displayAvatarURL()
     })
     .setTimestamp();
@@ -527,51 +527,51 @@ async function handleListTemplates(message) {
   return message.reply({ embeds: [embed] });
 }
 
-// Menampilkan informasi detail template
+// Display detailed template information
 async function handleTemplateInfo(message, templateName) {
   const template = getTemplate(templateName);
   
   if (!template) {
-    return message.reply(`Template "${templateName}" tidak ditemukan.`);
+    return message.reply(`Template "${templateName}" not found.`);
   }
   
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle(`Template Karakter: ${templateName}`)
+    .setTitle(`Character Template: ${templateName}`)
     .addFields([
       {
-        name: 'Nama Karakter',
+        name: 'Character Name',
         value: template.name,
         inline: true
       },
       {
-        name: 'Tipe',
+        name: 'Type',
         value: template.type,
         inline: true
       },
       {
-        name: 'Deskripsi',
+        name: 'Description',
         value: template.description
       }
     ])
     .setTimestamp()
     .setFooter({
-      text: `Gunakan !character template use ${templateName} <nama_baru> untuk membuat karakter`,
+      text: `Use !character template use ${templateName} <new_name> to create character`,
       iconURL: message.client.user.displayAvatarURL()
     });
   
-  // Tambahkan informasi penampilan jika ada
+  // Add appearance information if available
   if (template.appearance && template.appearance.trim() !== '') {
     embed.addFields({
-      name: 'Penampilan',
+      name: 'Appearance',
       value: template.appearance
     });
   }
   
-  // Tambahkan informasi pesan awal jika ada
+  // Add initial message if available
   if (template.initialMessage && template.initialMessage.trim() !== '') {
     embed.addFields({
-      name: 'Pesan Awal',
+      name: 'Initial Message',
       value: template.initialMessage
     });
   }
@@ -579,40 +579,40 @@ async function handleTemplateInfo(message, templateName) {
   return message.reply({ embeds: [embed] });
 }
 
-// Menggunakan template untuk membuat karakter baru
+// Use template to create a new character
 async function handleUseTemplate(message, templateName, characterName) {
   try {
     const character = createCharacterFromTemplate(templateName, characterName);
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Karakter Dibuat dari Template')
-      .setDescription(`Karakter **${character.name}** telah dibuat dari template **${templateName}**!`)
+      .setTitle('Character Created from Template')
+      .setDescription(`Character **${character.name}** has been created from template **${templateName}**!`)
       .addFields([
         {
-          name: 'Tipe',
+          name: 'Type',
           value: character.type,
           inline: true
         },
         {
-          name: 'Deskripsi',
+          name: 'Description',
           value: character.description
         }
       ])
       .setTimestamp();
     
-    // Tambahkan informasi penampilan jika ada
+    // Add appearance information if available
     if (character.appearance && character.appearance.trim() !== '') {
       embed.addFields({
-        name: 'Penampilan',
+        name: 'Appearance',
         value: character.appearance
       });
     }
     
-    // Tambahkan informasi pesan awal jika ada
+    // Add initial message if available
     if (character.initialMessage && character.initialMessage.trim() !== '') {
       embed.addFields({
-        name: 'Pesan Awal',
+        name: 'Initial Message',
         value: character.initialMessage
       });
     }
@@ -623,16 +623,16 @@ async function handleUseTemplate(message, templateName, characterName) {
   }
 }
 
-// Menambahkan karakter yang ada sebagai template baru
+// Add existing character as a new template
 async function handleAddTemplate(message, templateName, characterName) {
   try {
-    // Cek apakah karakter ada
+    // Check if character exists
     const character = getCharacter(characterName);
     if (!character || character.name.toLowerCase() !== characterName.toLowerCase()) {
-      return message.reply(`Karakter "${characterName}" tidak ditemukan.`);
+      return message.reply(`Character "${characterName}" not found.`);
     }
     
-    // Buat template baru
+    // Create new template
     const template = {
       name: character.name,
       type: character.type,
@@ -641,27 +641,27 @@ async function handleAddTemplate(message, templateName, characterName) {
       initialMessage: character.initialMessage || ''
     };
     
-    // Simpan template
+    // Save template
     saveTemplate(templateName, template);
     
     const embed = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('Template Baru Ditambahkan')
-      .setDescription(`Template **${templateName}** telah dibuat dari karakter **${character.name}**!`)
+      .setTitle('New Template Added')
+      .setDescription(`Template **${templateName}** has been created from character **${character.name}**!`)
       .addFields([
         {
-          name: 'Tipe',
+          name: 'Type',
           value: template.type,
           inline: true
         },
         {
-          name: 'Deskripsi',
+          name: 'Description',
           value: template.description
         }
       ])
       .setTimestamp()
       .setFooter({
-        text: `Gunakan !character template use ${templateName} <nama_baru> untuk membuat karakter dari template ini`,
+        text: `Use !character template use ${templateName} <new_name> to create character from this template`,
         iconURL: message.client.user.displayAvatarURL()
       });
     
@@ -671,16 +671,16 @@ async function handleAddTemplate(message, templateName, characterName) {
   }
 }
 
-// Menghapus template
+// Delete template
 async function handleDeleteTemplate(message, templateName) {
   try {
-    // Hapus template
+    // Delete template
     deleteTemplate(templateName);
     
     const embed = new EmbedBuilder()
       .setColor('#ff0000')
-      .setTitle('Template Dihapus')
-      .setDescription(`Template **${templateName}** telah dihapus!`)
+      .setTitle('Template Deleted')
+      .setDescription(`Template **${templateName}** has been deleted!`)
       .setTimestamp();
     
     return message.reply({ embeds: [embed] });
@@ -689,22 +689,22 @@ async function handleDeleteTemplate(message, templateName) {
   }
 }
 
-// Mengekspor template kosong
+// Export blank template
 async function handleExportBlankTemplate(message) {
   try {
     const blankTemplatePath = path.join(__dirname, '../../src/data/blank_template.json');
     
     if (!fs.existsSync(blankTemplatePath)) {
-      // Jika file tidak ada, buat file template kosong
+      // If file doesn't exist, create a blank template file
       const blankTemplate = {
-        "name": "Nama Karakter",
+        "name": "Character Name",
         "type": "anime/movie/game/custom",
-        "description": "Deskripsi singkat tentang karakter, termasuk kepribadian, latar belakang, dan karakteristik utama.",
-        "appearance": "Deskripsi detail tentang penampilan fisik karakter, seperti rambut, mata, pakaian, dan ciri-ciri khusus lainnya.",
-        "initialMessage": "Pesan yang akan diucapkan karakter saat pertama kali berbicara dengan pengguna."
+        "description": "Brief description about the character, including personality, background, and main characteristics.",
+        "appearance": "Detailed description of the character's physical appearance, such as hair, eyes, clothing, and other special features.",
+        "initialMessage": "Message that the character will say when first talking to the user."
       };
       
-      // Pastikan direktori ada
+      // Ensure directory exists
       const dirPath = path.dirname(blankTemplatePath);
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
@@ -713,9 +713,9 @@ async function handleExportBlankTemplate(message) {
       fs.writeFileSync(blankTemplatePath, JSON.stringify(blankTemplate, null, 2));
     }
     
-    // Kirim file template kosong ke pengguna
+    // Send blank template file to user
     await message.reply({
-      content: "Berikut adalah template kosong untuk membuat karakter baru. Anda dapat mengedit file ini sesuai keinginan dan kemudian mengimpornya dengan perintah `!character import`.",
+      content: "Here is a blank template for creating a new character. You can edit this file as desired and then import it with the `!character import` command.",
       files: [{
         attachment: blankTemplatePath,
         name: "blank_character_template.json"

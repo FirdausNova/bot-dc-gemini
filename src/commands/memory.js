@@ -1,4 +1,4 @@
-// Perintah memory untuk mengelola ingatan percakapan dengan AI
+// Command for managing conversation memory with AI
 const { 
   getUserHistorySummary, 
   clearUserHistory, 
@@ -14,7 +14,7 @@ const path = require('path');
 
 module.exports = {
   name: 'memory',
-  description: 'Mengelola ingatan/histori percakapan dengan AI',
+  description: 'Manage conversation history/memory with AI',
   async execute(message, args) {
     try {
       const userId = message.author.id;
@@ -67,12 +67,12 @@ module.exports = {
       }
     } catch (error) {
       console.error('Error in memory command:', error);
-      await message.reply('Maaf, terjadi kesalahan saat mengelola ingatan/histori percakapan.');
+      await message.reply('Sorry, an error occurred while managing conversation memory.');
     }
   }
 };
 
-// Fungsi untuk menampilkan ringkasan ingatan
+// Function to display memory summary
 async function showMemorySummary(message, userId) {
   const summary = getUserHistorySummary(userId);
   
@@ -81,106 +81,106 @@ async function showMemorySummary(message, userId) {
     return;
   }
   
-  // Format ringkasan memori
-  const memoryReply = `**Ringkasan Percakapan Kita**\n\n` +
-    `Total pesan: ${summary.totalMessages}\n` +
-    `Pesan kamu: ${summary.userMessages}\n` +
-    `Pesan saya: ${summary.botMessages}\n` +
-    `Pertama kali bicara: ${summary.firstMessageDate}\n` +
-    `Terakhir bicara: ${summary.lastMessageDate}\n` +
-    `Durasi percakapan: ${summary.durationDays} hari\n\n` +
-    `Saya ingat semua percakapan kita dan menggunakan ingatan ini untuk merespon lebih baik! 😊\n\n` +
-    `Gunakan \`!memory narrative\` untuk melihat versi narasi dari percakapan kita.`;
+  // Format memory summary
+  const memoryReply = `**Conversation Summary**\n\n` +
+    `Total messages: ${summary.totalMessages}\n` +
+    `Your messages: ${summary.userMessages}\n` +
+    `My messages: ${summary.botMessages}\n` +
+    `First talked: ${summary.firstMessageDate}\n` +
+    `Last talked: ${summary.lastMessageDate}\n` +
+    `Conversation duration: ${summary.durationDays} days\n\n` +
+    `I remember all our conversations and use this memory to respond better! 😊\n\n` +
+    `Use \`!memory narrative\` to see a narrative version of our conversation.`;
   
   await message.reply(memoryReply);
 }
 
-// Fungsi untuk menampilkan narasi percakapan
+// Function to display conversation narrative
 async function showNarrativeMemory(message, userId) {
-  // Coba dapatkan narasi yang ada
+  // Try to get existing narrative
   let narrative = getUserNarrativeSummary(userId);
   
-  // Jika tidak ada narasi, coba buat narasi baru
+  // If no narrative exists, try to create a new one
   if (!narrative) {
-    await message.reply('Sedang membuat narasi dari percakapan kita...');
+    await message.reply('Creating narrative from our conversation...');
     narrative = await generateNarrativeFromHistory(userId);
   }
   
-  // Jika masih tidak ada narasi, tampilkan pesan error
+  // If still no narrative, show error message
   if (!narrative) {
-    await message.reply('Belum ada cukup percakapan untuk membuat narasi. Silakan mengobrol lebih banyak terlebih dahulu.');
+    await message.reply('Not enough conversation to create a narrative. Please chat more first.');
     return;
   }
   
-  // Format narasi
+  // Format narrative
   const narrativeEmbed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('Ingatan Percakapan Kita')
+    .setTitle('Our Conversation Memory')
     .setDescription(narrative)
     .setTimestamp()
     .setFooter({ 
-      text: 'Narasi berdasarkan percakapan terakhir kita',
+      text: 'Narrative based on our recent conversation',
       iconURL: message.client.user.displayAvatarURL()
     });
   
   await message.reply({ embeds: [narrativeEmbed] });
 }
 
-// Fungsi untuk membuat narasi baru
+// Function to create a new narrative
 async function generateNewNarrative(message, userId) {
-  await message.reply('Sedang membuat narasi baru dari percakapan kita...');
+  await message.reply('Creating new narrative from our conversation...');
   
-  // Coba buat narasi baru
+  // Try to create a new narrative
   const narrative = await generateNarrativeFromHistory(userId);
   
   if (!narrative) {
-    await message.reply('Belum ada cukup percakapan untuk membuat narasi. Silakan mengobrol lebih banyak terlebih dahulu.');
+    await message.reply('Not enough conversation to create a narrative. Please chat more first.');
     return;
   }
   
-  // Format narasi
+  // Format narrative
   const narrativeEmbed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('Narasi Baru')
+    .setTitle('New Narrative')
     .setDescription(narrative)
     .setTimestamp()
     .setFooter({ 
-      text: 'Narasi dibuat untuk percakapan terakhir kita',
+      text: 'Narrative created for our recent conversation',
       iconURL: message.client.user.displayAvatarURL()
     });
   
   await message.reply({ embeds: [narrativeEmbed] });
 }
 
-// Fungsi untuk mengkonfigurasi auto narrative
+// Function to configure auto narrative
 async function configureAutoNarrative(message, args) {
-  // Jika tidak ada argumen, tampilkan pengaturan saat ini
+  // If no arguments, show current configuration
   if (!args || args.length === 0) {
-    const currentConfig = setAutoNarrativeConfig(); // Memanggil tanpa parameter untuk mendapatkan konfigurasi saat ini
+    const currentConfig = setAutoNarrativeConfig(); // Calling without parameters to get current configuration
     
-    const autoNarrativeInfo = `**Konfigurasi Narasi Otomatis**\n\n` +
-      `Narasi otomatis dibuat setiap kali pengguna mencapai ${currentConfig.threshold} pesan dalam percakapan.\n` +
-      `Narasi otomatis hanya dibuat sekali setiap ${currentConfig.cooldown / (60 * 1000)} menit untuk menghemat penggunaan API.\n\n` +
-      `*Gaya Shapes.inc:* Bot secara otomatis membuat narasi percakapan tanpa perlu diminta.\n\n` +
-      `**Perintah:**\n` +
-      `\`!memory auto threshold <jumlah>\` - Mengatur jumlah pesan yang diperlukan untuk memicu narasi otomatis\n` +
-      `\`!memory auto cooldown <menit>\` - Mengatur interval minimal (dalam menit) antara pembuatan narasi otomatis`;
+    const autoNarrativeInfo = `**Auto Narrative Configuration**\n\n` +
+      `Auto narrative created every time user reaches ${currentConfig.threshold} messages in conversation.\n` +
+      `Auto narrative created once every ${currentConfig.cooldown / (60 * 1000)} minutes to save API usage.\n\n` +
+      `*Shapes.inc style:* Bot automatically creates narrative from conversation without needing to be asked.\n\n` +
+      `**Commands:**\n` +
+      `\`!memory auto threshold <number>\` - Set the number of messages required to trigger auto narrative\n` +
+      `\`!memory auto cooldown <minutes>\` - Set the minimum interval (in minutes) between auto narrative creation`;
     
     await message.reply(autoNarrativeInfo);
     return;
   }
   
-  // Jika ada argumen, coba atur konfigurasi
+  // If arguments, try to configure
   if (args[0] === 'threshold' && args.length >= 2) {
     const threshold = parseInt(args[1]);
     
     if (isNaN(threshold) || threshold < 2) {
-      await message.reply('Nilai threshold harus berupa angka dan minimal 2 pesan.');
+      await message.reply('Threshold must be a number and at least 2 messages.');
       return;
     }
     
     const config = setAutoNarrativeConfig(threshold, null);
-    await message.reply(`Berhasil mengatur threshold narasi otomatis menjadi ${config.threshold} pesan.`);
+    await message.reply(`Successfully set auto narrative threshold to ${config.threshold} messages.`);
     return;
   }
   
@@ -188,38 +188,38 @@ async function configureAutoNarrative(message, args) {
     const cooldownMinutes = parseInt(args[1]);
     
     if (isNaN(cooldownMinutes) || cooldownMinutes < 1) {
-      await message.reply('Nilai cooldown harus berupa angka dan minimal 1 menit.');
+      await message.reply('Cooldown must be a number and at least 1 minute.');
       return;
     }
     
     const cooldownMs = cooldownMinutes * 60 * 1000;
     const config = setAutoNarrativeConfig(null, cooldownMs);
-    await message.reply(`Berhasil mengatur cooldown narasi otomatis menjadi ${cooldownMinutes} menit.`);
+    await message.reply(`Successfully set auto narrative cooldown to ${cooldownMinutes} minutes.`);
     return;
   }
   
-  // Jika argumen tidak valid
-  await message.reply('Perintah tidak valid. Gunakan `!memory auto` untuk melihat pengaturan saat ini dan petunjuk penggunaan.');
+  // If arguments are invalid
+  await message.reply('Invalid command. Use `!memory auto` to see current configuration and usage instructions.');
 }
 
-// Fungsi untuk menampilkan semua narasi
+// Function to display all narratives
 async function showAllNarratives(message, userId) {
   const narratives = getAllUserNarratives(userId);
   
   if (!narratives || narratives.length === 0) {
-    await message.reply('Belum ada narasi yang tersimpan. Gunakan `!memory generate` untuk membuat narasi baru.');
+    await message.reply('No narratives saved. Use `!memory generate` to create a new narrative.');
     return;
   }
   
-  // Jika hanya ada satu narasi
+  // If there's only one narrative
   if (narratives.length === 1) {
     const narrativeEmbed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle('Ingatan Percakapan Kita')
+      .setTitle('Our Conversation Memory')
       .setDescription(narratives[0].narrative)
       .setTimestamp(new Date(narratives[0].timestamp))
       .setFooter({ 
-        text: 'Satu-satunya narasi yang tersimpan',
+        text: 'Only saved narrative',
         iconURL: message.client.user.displayAvatarURL()
       });
     
@@ -227,7 +227,7 @@ async function showAllNarratives(message, userId) {
     return;
   }
   
-  // Jika ada banyak narasi, kirim beberapa terakhir
+  // If there are multiple narratives, send the last few
   const maxNarratives = Math.min(3, narratives.length);
   const recentNarratives = narratives.slice(-maxNarratives);
   
@@ -237,55 +237,55 @@ async function showAllNarratives(message, userId) {
     
     const narrativeEmbed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle(`Ingatan #${narratives.length - maxNarratives + i + 1}`)
+      .setTitle(`Memory #${narratives.length - maxNarratives + i + 1}`)
       .setDescription(narrative.narrative)
       .setTimestamp(date)
       .setFooter({ 
-        text: `Narasi ${i + 1} dari ${maxNarratives}${narrative.isAutoGenerated ? ' (Dibuat otomatis)' : ''}`,
+        text: `Narrative ${i + 1} of ${maxNarratives}${narrative.isAutoGenerated ? ' (Auto-generated)' : ''}`,
         iconURL: message.client.user.displayAvatarURL()
       });
     
     await message.reply({ embeds: [narrativeEmbed] });
     
-    // Tunggu sebentar sebelum mengirim narasi berikutnya untuk menghindari rate limiting
+    // Wait between sending narratives to avoid rate limiting
     if (i < recentNarratives.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
   
-  // Jika ada lebih banyak narasi yang tidak ditampilkan
+  // If there are more narratives than displayed
   if (narratives.length > maxNarratives) {
-    await message.reply(`Hanya menampilkan ${maxNarratives} narasi terbaru dari total ${narratives.length} narasi.`);
+    await message.reply(`Only showing ${maxNarratives} recent narratives out of total ${narratives.length} narratives.`);
   }
 }
 
-// Fungsi untuk menghapus ingatan
+// Function to clear memory
 async function clearMemory(message, userId) {
   const success = clearUserHistory(userId);
   
   if (success) {
-    await message.reply('Ingatan berhasil dihapus. Saya tidak akan mengingat percakapan kita sebelumnya.');
+    await message.reply('Memory cleared. I will not remember our previous conversation.');
   } else {
-    await message.reply('Gagal menghapus ingatan. Mungkin tidak ada ingatan yang tersimpan.');
+    await message.reply('Failed to clear memory. Maybe no memory saved.');
   }
 }
 
-// Fungsi untuk mengekspor ingatan
+// Function to export memory
 async function exportMemory(message, userId) {
   const history = getUserHistory(userId);
   
   if (!history || history.length === 0) {
-    await message.reply('Tidak ada ingatan yang tersimpan untuk diekspor.');
+    await message.reply('No memory saved to export.');
     return;
   }
   
-  // Format untuk tampilan yang lebih baik
+  // Format for better display
   const formattedHistory = history.map(item => {
     const timestamp = new Date(item.timestamp).toLocaleString();
-    return `[${timestamp}] ${item.role === 'user' ? 'Kamu' : 'AI'}: ${item.message}`;
+    return `[${timestamp}] ${item.role === 'user' ? 'You' : 'AI'}: ${item.message}`;
   }).join('\n\n');
   
-  // Buat file teks sementara
+  // Create temporary text file
   const tempDir = path.join(__dirname, '../../temp');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
@@ -294,35 +294,35 @@ async function exportMemory(message, userId) {
   const filePath = path.join(tempDir, `memory_${userId}.txt`);
   fs.writeFileSync(filePath, formattedHistory, 'utf8');
   
-  // Kirim file
+  // Send file
   await message.reply({
-    content: 'Berikut adalah ekspor dari ingatan percakapan kita:',
+    content: 'Here is the export from our conversation memory:',
     files: [{
       attachment: filePath,
       name: 'memory_export.txt'
     }]
   });
   
-  // Coba ekspor juga narasi jika ada
+  // Try to export narrative if there is one
   const narratives = getAllUserNarratives(userId);
   if (narratives && narratives.length > 0) {
     const formattedNarratives = narratives.map((item, index) => {
       const timestamp = new Date(item.timestamp).toLocaleString();
-      return `=== NARASI #${index + 1} (${timestamp})${item.isAutoGenerated ? ' (OTOMATIS)' : ''} ===\n\n${item.narrative}\n\n`;
+      return `=== NARRATIVE #${index + 1} (${timestamp})${item.isAutoGenerated ? ' (AUTO-GENERATED)' : ''} ===\n\n${item.narrative}\n\n`;
     }).join('\n' + '='.repeat(50) + '\n\n');
     
     const narrativeFilePath = path.join(tempDir, `narrative_${userId}.txt`);
     fs.writeFileSync(narrativeFilePath, formattedNarratives, 'utf8');
     
     await message.reply({
-      content: 'Berikut adalah narasi dari percakapan kita:',
+      content: 'Here is the narrative from our conversation:',
       files: [{
         attachment: narrativeFilePath,
         name: 'narrative_export.txt'
       }]
     });
     
-    // Hapus file sementara setelah dikirim
+    // Delete temporary file after sending
     setTimeout(() => {
       try {
         fs.unlinkSync(narrativeFilePath);
@@ -332,7 +332,7 @@ async function exportMemory(message, userId) {
     }, 5000);
   }
   
-  // Hapus file sementara setelah dikirim
+  // Delete temporary file after sending
   setTimeout(() => {
     try {
       fs.unlinkSync(filePath);
@@ -342,24 +342,24 @@ async function exportMemory(message, userId) {
   }, 5000);
 }
 
-// Fungsi untuk menampilkan bantuan
+// Function to display help
 async function showHelp(message) {
-  const helpText = `**Perintah Memori/Ingatan (Gaya Shapes.inc)**\n\n` +
-    `\`!memory\` - Menampilkan narasi percakapan (gaya Shapes.inc)\n` +
-    `\`!memory narrative\` - Menampilkan narasi percakapan (gaya Shapes.inc)\n` +
-    `\`!memory summary\` - Menampilkan ringkasan statistik percakapan\n` +
-    `\`!memory generate\` - Membuat narasi baru dari percakapan terakhir\n` +
-    `\`!memory all\` - Menampilkan beberapa narasi terbaru\n` +
-    `\`!memory auto\` - Melihat/mengatur konfigurasi narasi otomatis\n` +
-    `\`!memory clear\` - Menghapus semua ingatan percakapan\n` +
-    `\`!memory export\` - Mengekspor ingatan percakapan sebagai file teks\n` +
-    `\`!memory help\` - Menampilkan bantuan ini\n\n` +
-    `**Gaya Shapes.inc:**\n` +
-    `Bot secara otomatis menciptakan narasi dari percakapan tanpa perlu diminta. Narasi dibuat setelah beberapa pesan dikirim oleh user dan AI.\n\n` +
-    `Alternatif lain:\n` +
-    `\`!chat memori\` - Melihat narasi percakapan\n` +
-    `\`!charchat memori\` - Melihat narasi percakapan\n` +
-    `Ketik \`ingatan\` di channel auto-respond`;
+  const helpText = `**Memory/Conversation History Commands (Shapes.inc style)**\n\n` +
+    `\`!memory\` - Show conversation narrative (Shapes.inc style)\n` +
+    `\`!memory narrative\` - Show conversation narrative (Shapes.inc style)\n` +
+    `\`!memory summary\` - Show conversation statistics summary\n` +
+    `\`!memory generate\` - Create a new narrative from recent conversation\n` +
+    `\`!memory all\` - Show several recent narratives\n` +
+    `\`!memory auto\` - Show/configure auto narrative settings\n` +
+    `\`!memory clear\` - Clear all conversation memory\n` +
+    `\`!memory export\` - Export conversation memory as text file\n` +
+    `\`!memory help\` - Show this help\n\n` +
+    `**Shapes.inc:**\n` +
+    `Bot automatically creates narrative from conversation without needing to be asked. Narrative created after several messages from user and AI.\n\n` +
+    `Alternative:\n` +
+    `\`!chat memori\` - Show conversation narrative\n` +
+    `\`!charchat memori\` - Show conversation narrative\n` +
+    `Type \`ingatan\` in auto-respond channel`;
   
   await message.reply(helpText);
 } 

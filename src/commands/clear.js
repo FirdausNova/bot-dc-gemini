@@ -1,18 +1,18 @@
-// Perintah untuk membersihkan histori percakapan dengan AI
+// Command to clear conversation history with AI
 const { clearUserHistory } = require('../utils/gemini');
 
 module.exports = {
   name: 'clear',
-  description: 'Membersihkan histori percakapan dengan AI',
+  description: 'Clear conversation history with AI',
   async execute(message, args) {
     try {
-      // Bersihkan histori percakapan user
+      // Clear user conversation history
       clearUserHistory(message.author.id);
       
-      await message.reply('Histori percakapan Anda dengan AI telah dihapus.');
+      await message.reply('Your conversation history with AI has been cleared.');
     } catch (error) {
       console.error('Error in clear command:', error);
-      await message.reply('Maaf, terjadi kesalahan saat membersihkan histori percakapan.');
+      await message.reply('Sorry, an error occurred while clearing conversation history.');
     }
   }
 }; 

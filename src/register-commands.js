@@ -1,52 +1,85 @@
-// Script untuk mendaftarkan perintah slash ke Discord API
+// Script to register slash commands to Discord API
 require('dotenv').config();
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Variabel untuk token bot dan aplikasi ID dari .env
-const token = process.env.DISCORD_BOT_TOKEN;
+// Get environment variables
+const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
+const guildId = process.env.GUILD_ID;
 
-// Array untuk menyimpan data perintah
+// Check for required env vars
+if (!token) {
+	console.error('Error: DISCORD_TOKEN not found in .env file');
+	process.exit(1);
+}
+
+if (!clientId) {
+	console.error('Error: DISCORD_CLIENT_ID not found in .env file');
+	process.exit(1);
+}
+
+if (!guildId) {
+	console.error('Error: GUILD_ID not found in .env file. Add GUILD_ID=YOUR_SERVER_ID to .env file');
+	console.error('You can get server ID by enabling developer mode in Discord,');
+	console.error('right-click on the server name and select "Copy ID"');
+	process.exit(1);
+}
+
+console.log('Token detected:', token ? 'Yes (length: ' + token.length + ')' : 'No');
+console.log('Client ID detected:', clientId || 'No');
+console.log('Guild ID detected:', guildId || 'No');
+
+// Array to store command data
 const commands = [];
 
-// Path ke folder perintah slash
+// Path to slash commands folder
 const commandsPath = path.join(__dirname, 'slash-commands');
 
-// Baca semua file perintah di direktori slash-commands
+// Check if the commands directory exists
+if (!fs.existsSync(commandsPath)) {
+	console.error(`Error: Slash commands folder not found at ${commandsPath}`);
+	process.exit(1);
+}
+
+// Read all command files
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Tambahkan data perintah ke array commands
+if (commandFiles.length === 0) {
+	console.warn('Warning: No slash command files found in slash-commands folder');
+}
+
+// Add command data to commands array
 for (const file of commandFiles) {
 	const filePath = path.join(commandsPath, file);
 	const command = require(filePath);
 	
-	// Periksa apakah perintah memiliki properti data dan execute yang diperlukan
 	if ('data' in command && 'execute' in command) {
 		commands.push(command.data.toJSON());
-		console.log(`[✓] Perintah slash ${command.data.name} berhasil dimuat`);
+		console.log(`[✓] Slash command ${command.data.name} loaded successfully`);
 	} else {
-		console.log(`[⚠] Perintah di ${filePath} tidak memiliki properti "data" atau "execute" yang diperlukan`);
+		console.log(`[⚠] Command in ${filePath} is missing required "data" or "execute" properties`);
 	}
 }
 
-// Buat instance REST
-const rest = new REST().setToken(token);
+// Create REST instance
+const rest = new REST({ version: '10' }).setToken(token);
 
-// Fungsi untuk mendaftarkan perintah
+// Register commands
 (async () => {
 	try {
-		console.log(`Memulai refresh ${commands.length} perintah aplikasi (/) ke Discord API...`);
+		console.log(`Starting refresh of ${commands.length} slash commands to server ID: ${guildId}...`);
 
-		// Mendaftarkan perintah secara global (akan tersedia di semua server)
+		// Register commands to specific server
 		const data = await rest.put(
-			Routes.applicationCommands(clientId),
+			Routes.applicationGuildCommands(clientId, guildId),
 			{ body: commands },
 		);
 
-		console.log(`Berhasil me-refresh ${data.length} perintah aplikasi (/) ke Discord API.`);
+		console.log(`Successfully refreshed ${data.length} slash commands to server.`);
+		console.log('Slash commands will be available in your server shortly!');
 	} catch (error) {
-		console.error('Terjadi kesalahan saat mendaftarkan perintah:', error);
+		console.error('Error registering commands:', error);
 	}
 })(); 

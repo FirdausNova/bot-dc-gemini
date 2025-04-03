@@ -1,4 +1,4 @@
-// Perintah untuk mengatur channel khusus untuk auto-respond
+// Command to set dedicated channel for auto-respond
 const fs = require('fs');
 const path = require('path');
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
@@ -6,84 +6,84 @@ require('dotenv').config();
 
 module.exports = {
   name: 'setchannel',
-  description: 'Mengatur channel khusus untuk auto-respond',
+  description: 'Set channel for auto-respond',
   async execute(message, args) {
     try {
-      // Periksa izin admin
+      // Check admin permissions
       if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        return message.reply('Anda tidak memiliki izin untuk menggunakan perintah ini.');
+        return message.reply('You do not have permission to use this command.');
       }
       
       if (args.length === 0) {
-        return message.reply('Penggunaan: `!setchannel <add/remove> [channel_id]`\nJika channel_id tidak diisi, akan menggunakan channel saat ini.');
+        return message.reply('Usage: `!setchannel <add/remove> [channel_id]`\nIf channel_id is not provided, the current channel will be used.');
       }
       
       const action = args[0].toLowerCase();
-      let channelId = args[1] || message.channel.id; // Gunakan channel saat ini jika tidak ada yang ditentukan
+      let channelId = args[1] || message.channel.id; // Use current channel if none specified
       
-      // Path ke file .env
+      // Path to .env file
       const envPath = path.resolve(process.cwd(), '.env');
       
-      // Baca file .env
+      // Read .env file
       let envContent = fs.readFileSync(envPath, 'utf8');
       
       switch (action) {
         case 'add':
-          // Periksa apakah channel ada
+          // Check if channel exists
           const channel = message.guild.channels.cache.get(channelId);
           if (!channel) {
-            return message.reply('Channel tidak ditemukan.');
+            return message.reply('Channel not found.');
           }
           
-          // Update atau tambahkan variabel AUTO_RESPOND_CHANNEL_ID
+          // Update or add AUTO_RESPOND_CHANNEL_ID variable
           if (envContent.includes('AUTO_RESPOND_CHANNEL_ID=')) {
             envContent = envContent.replace(/AUTO_RESPOND_CHANNEL_ID=.*/g, `AUTO_RESPOND_CHANNEL_ID=${channelId}`);
           } else {
             envContent += `\nAUTO_RESPOND_CHANNEL_ID=${channelId}`;
           }
           
-          // Simpan perubahan
+          // Save changes
           fs.writeFileSync(envPath, envContent);
           
-          // Update variabel lingkungan
+          // Update environment variable
           process.env.AUTO_RESPOND_CHANNEL_ID = channelId;
           
-          // Kirim notifikasi reguler
-          await message.reply(`Channel <#${channelId}> telah diatur sebagai channel auto-respond.\nBot sekarang akan merespon secara otomatis semua pesan di channel ini tanpa perlu prefix perintah.`);
+          // Send regular notification
+          await message.reply(`Channel <#${channelId}> has been set as auto-respond channel.\nBot will now automatically respond to all messages in this channel without requiring command prefix.`);
           
-          // Kirim pesan perkenalan di channel yang diatur jika itu bukan channel saat ini
+          // Send introduction message in set channel if not current channel
           if (channelId !== message.channelId) {
             const targetChannel = message.guild.channels.cache.get(channelId);
-            await targetChannel.send('Halo! Saya telah diaktifkan di channel ini. Mulai sekarang, saya akan merespon setiap pesan yang kamu kirim tanpa perlu menggunakan perintah. Silakan langsung mengobrol dengan saya seperti chatting biasa! 😊');
+            await targetChannel.send('Hello! I have been activated in this channel. From now on, I will respond to every message you send without needing to use commands. Feel free to chat with me like a regular conversation! 😊');
           } else {
-            // Jika channel saat ini, tambahkan pesan sambutan
-            await message.channel.send('Halo! Saya telah diaktifkan di channel ini. Mulai sekarang, saya akan merespon setiap pesan yang kamu kirim tanpa perlu menggunakan perintah. Silakan langsung mengobrol dengan saya seperti chatting biasa! 😊');
+            // If current channel, add welcome message
+            await message.channel.send('Hello! I have been activated in this channel. From now on, I will respond to every message you send without needing to use commands. Feel free to chat with me like a regular conversation! 😊');
           }
           
           return;
           
         case 'remove':
-          // Hapus variabel AUTO_RESPOND_CHANNEL_ID
+          // Remove AUTO_RESPOND_CHANNEL_ID variable
           if (envContent.includes('AUTO_RESPOND_CHANNEL_ID=')) {
             envContent = envContent.replace(/AUTO_RESPOND_CHANNEL_ID=.*/g, '# AUTO_RESPOND_CHANNEL_ID=');
           }
           
-          // Simpan perubahan
+          // Save changes
           fs.writeFileSync(envPath, envContent);
           
-          // Update variabel lingkungan
+          // Update environment variable
           delete process.env.AUTO_RESPOND_CHANNEL_ID;
           
-          await message.reply('Fitur auto-respond telah dinonaktifkan. Bot tidak akan lagi merespon pesan secara otomatis di channel manapun.');
+          await message.reply('Auto-respond feature has been disabled. Bot will no longer automatically respond to messages in any channel.');
           
           return;
           
         default:
-          return message.reply('Tindakan tidak valid. Gunakan `add` atau `remove`.');
+          return message.reply('Invalid action. Use `add` or `remove`.');
       }
     } catch (error) {
       console.error('Error in setchannel command:', error);
-      return message.reply('Terjadi kesalahan saat mengatur channel auto-respond.');
+      return message.reply('An error occurred while setting up auto-respond channel.');
     }
   }
 }; 
