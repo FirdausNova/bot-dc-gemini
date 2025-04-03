@@ -265,66 +265,52 @@ async function handleCharacterInfo(interaction) {
   const name = interaction.options.getString('nama');
   const character = getCharacter(name);
   
+  const isDefault = !name || (name && getCharacter().name.toLowerCase() === character.name.toLowerCase());
+  
+  // Komponen embed untuk info karakter
+  const fields = [
+    {
+      name: 'Tipe',
+      value: character.type,
+      inline: true
+    }
+  ];
+
+  // Jika ada deskripsi penampilan, tambahkan ke fields
+  if (character.appearance && character.appearance.trim() !== '') {
+    // Jika deskripsi terlalu panjang untuk field (max 1024 karakter), potong
+    const maxFieldLength = 1020;
+    let trimmedAppearance = character.appearance;
+    
+    if (character.appearance.length > maxFieldLength) {
+      trimmedAppearance = character.appearance.substring(0, maxFieldLength) + '...';
+    }
+    
+    fields.push({
+      name: 'Penampilan',
+      value: trimmedAppearance
+    });
+  }
+
+  // Potong deskripsi jika terlalu panjang
+  const maxDescriptionLength = 4000;
+  let trimmedDescription = character.description;
+
+  if (character.description && character.description.length > maxDescriptionLength) {
+    trimmedDescription = character.description.substring(0, maxDescriptionLength) + '... *(terpotong karena terlalu panjang)*';
+  }
+
+  // Buat embed
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle(`Karakter: ${character.name}`)
-    .addFields([
-      {
-        name: 'Tipe',
-        value: character.type,
-        inline: true
-      },
-      {
-        name: 'Status',
-        value: !name || (name && getCharacter().name.toLowerCase() === character.name.toLowerCase()) ? 'Default' : 'Custom',
-        inline: true
-      },
-      {
-        name: 'Deskripsi',
-        value: character.description
-      }
-    ])
+    .setTitle(`Informasi Karakter: ${character.name}`)
+    .setDescription(trimmedDescription)
+    .addFields(fields)
     .setTimestamp()
     .setFooter({
-      text: `Karakter AI`,
+      text: `Default: ${isDefault ? 'Ya' : 'Tidak'}`,
       iconURL: interaction.client.user.displayAvatarURL()
     });
-  
-  // Tambahkan informasi penampilan jika ada
-  if (character.appearance && character.appearance.trim() !== '') {
-    embed.addFields({
-      name: 'Penampilan',
-      value: character.appearance
-    });
-  }
-  
-  // Tambahkan informasi pesan awal jika ada
-  if (character.initialMessage && character.initialMessage.trim() !== '') {
-    embed.addFields({
-      name: 'Pesan Awal',
-      value: character.initialMessage
-    });
-  }
-  
-  // Tambahkan atribut-atribut roleplay jika ada
-  const roleplayAttrs = [
-    { key: 'personality', name: 'Kepribadian' },
-    { key: 'background', name: 'Latar Belakang' },
-    { key: 'relationships', name: 'Hubungan' },
-    { key: 'quirks', name: 'Kebiasaan Unik' },
-    { key: 'likes', name: 'Kesukaan' },
-    { key: 'dislikes', name: 'Ketidaksukaan' },
-    { key: 'goals', name: 'Tujuan' }
-  ];
-  
-  roleplayAttrs.forEach(attr => {
-    if (character[attr.key] && character[attr.key].trim() !== '') {
-      embed.addFields({
-        name: attr.name,
-        value: character[attr.key]
-      });
-    }
-  });
   
   return interaction.reply({ embeds: [embed] });
 }
@@ -679,113 +665,79 @@ async function handleAddTemplate(interaction) {
   }
   
   // Buat template baru
-  const template = {
-    name: character.name,
+  const newTemplate = {
+    name: templateName,
     type: character.type,
     description: character.description,
-    appearance: character.appearance || '',
-    initialMessage: character.initialMessage || '',
-    personality: character.personality || '',
-    background: character.background || '',
-    relationships: character.relationships || '',
-    quirks: character.quirks || '',
-    likes: character.likes || '',
-    dislikes: character.dislikes || '',
-    goals: character.goals || '',
-    expressionPatterns: character.expressionPatterns || {}
+    appearance: character.appearance,
+    initialMessage: character.initialMessage,
+    personality: character.personality,
+    background: character.background,
+    relationships: character.relationships,
+    quirks: character.quirks,
+    likes: character.likes,
+    dislikes: character.dislikes,
+    goals: character.goals
   };
   
-  // Simpan template
-  saveTemplate(templateName, template);
+  // Simpan template baru
+  saveTemplate(newTemplate);
   
   const embed = new EmbedBuilder()
     .setColor('#00ff00')
-    .setTitle('Template Baru Ditambahkan')
-    .setDescription(`Template **${templateName}** telah dibuat dari karakter **${character.name}**!`)
+    .setTitle('Template Karakter Ditambahkan')
+    .setDescription(`Template baru **${templateName}** telah ditambahkan!`)
     .addFields([
       {
+        name: 'Nama',
+        value: newTemplate.name,
+        inline: true
+      },
+      {
         name: 'Tipe',
-        value: template.type,
+        value: newTemplate.type,
         inline: true
       },
       {
         name: 'Deskripsi',
-        value: template.description
+        value: newTemplate.description
       }
     ])
-    .setTimestamp()
     .setFooter({
-      text: `Gunakan /character template use ${templateName} <nama_baru> untuk membuat karakter dari template ini`,
+      text: 'Gunakan /character template use untuk membuat karakter baru dari template',
       iconURL: interaction.client.user.displayAvatarURL()
-    });
-  
-  return interaction.editReply({ embeds: [embed] });
-}
-
-// Menghapus template
-async function handleDeleteTemplate(interaction) {
-  await interaction.deferReply();
-  
-  const templateName = interaction.options.getString('nama');
-  
-  // Hapus template
-  deleteTemplate(templateName);
-  
-  const embed = new EmbedBuilder()
-    .setColor('#ff0000')
-    .setTitle('Template Dihapus')
-    .setDescription(`Template **${templateName}** telah dihapus!`)
+    })
     .setTimestamp();
   
   return interaction.editReply({ embeds: [embed] });
 }
 
-// Mengekspor template kosong
+// Menghapus template karakter
+async function handleDeleteTemplate(interaction) {
+  await interaction.deferReply();
+  
+  const templateName = interaction.options.getString('nama');
+  const success = deleteTemplate(templateName);
+  
+  if (success) {
+    return interaction.reply(`Template **${templateName}** telah dihapus!`);
+  } else {
+    return interaction.reply(`Gagal menghapus template **${templateName}**. Pastikan template tersebut tidak digunakan oleh karakter.`);
+  }
+}
+
+// Menampilkan template kosong
 async function handleExportBlankTemplate(interaction) {
   await interaction.deferReply();
   
-  const blankTemplatePath = path.join(__dirname, '../../src/data/blank_template.json');
+  const filePath = path.join(__dirname, '..', 'templates', 'blank_template.json');
   
-  if (!fs.existsSync(blankTemplatePath)) {
-    // Jika file tidak ada, buat file template kosong
-    const blankTemplate = {
-      "name": "Nama Karakter",
-      "type": "anime/movie/game/custom",
-      "description": "Deskripsi singkat tentang karakter, termasuk kepribadian, latar belakang, dan karakteristik utama.",
-      "appearance": "Deskripsi detail tentang penampilan fisik karakter, seperti rambut, mata, pakaian, dan ciri-ciri khusus lainnya.",
-      "personality": "Deskripsi mendalam tentang sifat, tingkah laku, kebiasaan, cara bicara, dan reaksi emosional karakter dalam berbagai situasi.",
-      "background": "Sejarah dan latar belakang karakter yang mempengaruhi motivasi dan perilakunya saat ini.",
-      "relationships": "Hubungan karakter dengan tokoh-tokoh penting lainnya dalam dunianya.",
-      "quirks": "Kebiasaan unik, kata-kata khas, atau gerakan khusus yang sering dilakukan karakter.",
-      "likes": "Hal-hal yang disukai karakter, seperti makanan, aktivitas, atau topik pembicaraan favorit.",
-      "dislikes": "Hal-hal yang tidak disukai karakter, seperti ketakutan, kekesalan, atau topik sensitif.",
-      "goals": "Tujuan jangka pendek dan jangka panjang karakter yang memotivasi tindakannya.",
-      "initialMessage": "Pesan yang akan diucapkan karakter saat pertama kali berbicara dengan pengguna.",
-      "expressionPatterns": {
-        "happy": "Cara karakter mengekspresikan kebahagiaan, seperti 'tersenyum lebar dengan mata berbinar'",
-        "sad": "Cara karakter mengekspresikan kesedihan, seperti 'menunduk dengan bahu yang turun'",
-        "angry": "Cara karakter mengekspresikan kemarahan, seperti 'mengerutkan alis dengan tangan terkepal'",
-        "nervous": "Cara karakter mengekspresikan kegugupan, seperti 'mengalihkan pandangan sambil memainkan jari'",
-        "surprised": "Cara karakter mengekspresikan keterkejutan, seperti 'membelalakkan mata dengan mulut sedikit terbuka'",
-        "thinking": "Cara karakter mengekspresikan sedang berpikir, seperti 'mengetuk dagu sambil menatap ke atas'"
-      }
-    };
-    
-    // Pastikan direktori ada
-    const dirPath = path.dirname(blankTemplatePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-    
-    fs.writeFileSync(blankTemplatePath, JSON.stringify(blankTemplate, null, 2));
-  }
-  
-  // Kirim file template kosong ke pengguna
+  // Kirim file kosong ke pengguna
   await interaction.editReply({
-    content: "Berikut adalah template kosong untuk membuat karakter baru. Anda dapat mengedit file ini sesuai keinginan.",
+    content: `Template kosong telah diekspor!`,
     files: [{
-      attachment: blankTemplatePath,
-      name: "blank_character_template.json"
+      attachment: filePath,
+      name: 'blank_template.json'
     }]
   });
-} 
+}

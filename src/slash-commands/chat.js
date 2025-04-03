@@ -83,6 +83,16 @@ module.exports = {
       // Dapatkan respons dari AI
       const response = await getAIResponse(userId, messageContent);
       
+      // Saat mengirim respons terakhir
+      // Cek panjang respons dan potong jika terlalu panjang (batas Discord 2000 karakter)
+      const maxMessageLength = 1900; // Simpan margin untuk komponen lain
+      let formattedResponse = response;
+      
+      // Jika respons terlalu panjang, potong dan tambahkan notifikasi pemotongan
+      if (response.length > maxMessageLength) {
+        formattedResponse = response.substring(0, maxMessageLength) + '\n\n... *(respons terpotong karena terlalu panjang)*';
+      }
+      
       // Buat embed untuk respons
       const embed = new EmbedBuilder()
         .setColor('#0099ff')
@@ -90,7 +100,7 @@ module.exports = {
           name: character.name,
           iconURL: interaction.client.user.displayAvatarURL()
         })
-        .setDescription(response)
+        .setDescription(formattedResponse)
         .setFooter({
           text: `Diminta oleh ${interaction.user.tag}`,
           iconURL: interaction.user.displayAvatarURL()

@@ -154,10 +154,18 @@ async function sendNaturalAIResponse(message, messageContent) {
         }
       } else {
         // Kirim narasi dalam format embed yang menarik
+        // Potong narasi jika terlalu panjang untuk embed Discord (max 4096 karakter)
+        const maxDescriptionLength = 4000;
+        let trimmedNarrative = narrative;
+        
+        if (narrative.length > maxDescriptionLength) {
+          trimmedNarrative = narrative.substring(0, maxDescriptionLength) + '... *(terpotong karena terlalu panjang)*';
+        }
+        
         const narrativeEmbed = new EmbedBuilder()
           .setColor('#0099ff')
           .setTitle('Ingatan Percakapan Kita')
-          .setDescription(narrative)
+          .setDescription(trimmedNarrative)
           .setTimestamp()
           .setFooter({ 
             text: 'Narasi berdasarkan percakapan kita',
@@ -179,8 +187,17 @@ async function sendNaturalAIResponse(message, messageContent) {
       // Hentikan mengetik
       clearInterval(typingInterval);
       
+      // Cek panjang respons dan potong jika terlalu panjang (batas Discord 2000 karakter)
+      const maxMessageLength = 1900; // Simpan margin untuk reply context
+      let formattedResponse = response;
+      
+      // Jika respons terlalu panjang, potong dan tambahkan notifikasi pemotongan
+      if (response.length > maxMessageLength) {
+        formattedResponse = response.substring(0, maxMessageLength) + '\n\n... *(respons terpotong karena terlalu panjang)*';
+      }
+      
       // Kirim respons langsung (tanpa embed) untuk mirip chat biasa
-      await message.reply(response);
+      await message.reply(formattedResponse);
     } catch (error) {
       // Hentikan mengetik
       clearInterval(typingInterval);
@@ -196,6 +213,8 @@ async function sendNaturalAIResponse(message, messageContent) {
         errorMessage = 'Maaf, kuota API Gemini sudah tercapai. Bot akan otomatis mencoba model alternatif atau silakan coba lagi nanti.';
       } else if (error.message.includes('Tidak bisa terhubung ke Gemini API')) {
         errorMessage = 'Saat ini semua model AI sedang tidak tersedia. Silakan coba lagi dalam beberapa menit.';
+      } else if (error.message.includes('Must be 2000 or fewer in length') || error.message.includes('50035')) {
+        errorMessage = 'Respons terlalu panjang. Coba kirim pesan yang lebih singkat atau batasi konteks percakapan.';
       }
       
       await message.reply(errorMessage);

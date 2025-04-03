@@ -90,14 +90,23 @@ module.exports = {
         return message.reply(`Karakter "${characterName}" tidak ditemukan. Gunakan perintah \`!character list\` untuk melihat karakter yang tersedia.`);
       }
       
-      // Menampilkan indikator mengetik untuk efek natural
+      // Kirim indikator mengetik untuk efek natural
       await message.channel.sendTyping();
       
-      // Dapatkan jawaban dari AI
-      const response = await getAIResponse(userId, query, characterName);
+      // Dapatkan jawaban dari AI dengan karakter yang dipilih
+      const response = await getAIResponse(userId, query, character.name);
+      
+      // Cek panjang respons dan potong jika terlalu panjang (batas Discord 2000 karakter)
+      const maxMessageLength = 1900; // Simpan margin untuk komponen lain
+      let formattedResponse = response;
+      
+      // Jika respons terlalu panjang, potong dan tambahkan notifikasi pemotongan
+      if (response.length > maxMessageLength) {
+        formattedResponse = response.substring(0, maxMessageLength) + '\n\n... *(respons terpotong karena terlalu panjang)*';
+      }
       
       // Kirim respons langsung (tanpa embed) untuk mirip chat biasa
-      await message.reply(response);
+      await message.reply(formattedResponse);
     } catch (error) {
       console.error('Error in charchat command:', error);
       

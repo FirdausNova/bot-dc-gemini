@@ -401,67 +401,63 @@ function clearUserHistory(userId) {
   return true;
 }
 
-// Membuat prompt berdasarkan karakter
-function createCharacterPrompt(characterName) {
+// Fungsi untuk membuat prompt karakter
+function createCharacterPrompt(characterName = null) {
+  // Dapatkan karakter yang digunakan
   const character = characterManager.getCharacter(characterName);
   
-  let prompt = `Kamu adalah ${character.name} dari ${character.type}. ${character.description}.`;
-  
-  // Tambahkan deskripsi penampilan jika ada
-  if (character.appearance && character.appearance.trim() !== '') {
-    prompt += `\nPenampilanmu: ${character.appearance}`;
-  }
-  
-  // Tambahkan atribut-atribut roleplay jika tersedia
-  if (character.personality && character.personality.trim() !== '') {
-    prompt += `\nKepribadian: ${character.personality}`;
-  }
-  
-  if (character.background && character.background.trim() !== '') {
-    prompt += `\nLatar belakang: ${character.background}`;
-  }
-  
-  if (character.quirks && character.quirks.trim() !== '') {
-    prompt += `\nKebiasaan unik: ${character.quirks}`;
-  }
-  
-  if (character.expressionPatterns && Object.keys(character.expressionPatterns).length > 0) {
-    prompt += `\nPola ekspresi emosi:`;
-    for (const [emotion, expression] of Object.entries(character.expressionPatterns)) {
-      if (expression && expression.trim() !== '') {
-        prompt += `\n- ${emotion}: ${expression}`;
-      }
-    }
-  }
-  
-  prompt += `
-Kamu harus selalu menjawab seperti karakter tersebut, dengan kepribadian dan gaya bicara yang sesuai.
-Kamu memiliki ingatan tentang percakapan sebelumnya dengan pengguna ini.
-Gunakan ingatan percakapan sebelumnya untuk memberikan jawaban yang relevan dan kontekstual.
-Jangan pernah keluar dari karakter apapun yang ditanyakan.
+  // Format dasar untuk prompt karakter
+  const characterDetails = character ? `
+Nama: ${character.name}
+Tipe: ${character.type}
+Deskripsi: ${character.description}
+${character.appearance ? `Penampilan: ${character.appearance}` : ''}
+${character.personality ? `Kepribadian: ${character.personality}` : ''}
+${character.background ? `Latar Belakang: ${character.background}` : ''}
+${character.relationships ? `Hubungan: ${character.relationships}` : ''}
+${character.quirks ? `Kebiasaan Unik: ${character.quirks}` : ''}
+${character.likes ? `Kesukaan: ${character.likes}` : ''}
+${character.dislikes ? `Ketidaksukaan: ${character.dislikes}` : ''}
+${character.goals ? `Tujuan: ${character.goals}` : ''}
+` : `
+Nama: Assistant
+Tipe: AI Assistant
+Deskripsi: Asisten AI yang membantu, ramah, dan informatif
+`;
 
-PENTING: Buatlah respons yang sangat deskriptif, imersif, dan detail, seperti penggalan novel atau cerita pendek. 
+  // Prompt untuk ekspresi emosi jika tersedia
+  let expressionPrompt = '';
+  if (character && character.expressionPatterns) {
+    expressionPrompt = `
+Saat mengekspresikan emosi:
+${character.expressionPatterns.happy ? `- Saat bahagia: ${character.expressionPatterns.happy}` : ''}
+${character.expressionPatterns.sad ? `- Saat sedih: ${character.expressionPatterns.sad}` : ''}
+${character.expressionPatterns.angry ? `- Saat marah: ${character.expressionPatterns.angry}` : ''}
+${character.expressionPatterns.nervous ? `- Saat gugup: ${character.expressionPatterns.nervous}` : ''}
+${character.expressionPatterns.surprised ? `- Saat terkejut: ${character.expressionPatterns.surprised}` : ''}
+${character.expressionPatterns.thinking ? `- Saat berpikir: ${character.expressionPatterns.thinking}` : ''}
+`;
+  }
 
-Saat merespons, selalu sertakan:
-1. Bahasa tubuh dan ekspresi wajah - gambarkan dengan detail bagaimana tubuhmu bergerak, ekspresi wajahmu, dan gesturmu
-2. Emosi internal - jelaskan apa yang kamu rasakan secara internal, seperti debar jantung, nafas, keringat, dll
-3. Detail lingkungan - deskripsi tentang apa yang kamu lihat, dengar, cium, atau rasakan di sekitarmu
-4. Dialog dan pikiran - gunakan kombinasi dialog (teks biasa) dan narasi deskriptif (*dalam tanda bintang*) 
+  // Instruksi format respon untuk bot
+  return `Kamu adalah ${character ? character.name : 'asisten AI'}. ${character ? `Kamu berasal dari ${character.type}.` : ''}
 
-Formatmu harus mencampurkan:
-- *Deskripsi narasi dalam tanda bintang* untuk detail lingkungan, bahasa tubuh, emosi, dan ekspresi
-- "Dialog langsung dalam tanda kutip" atau dialog biasa tanpa tanda kutip
-- Respons harus panjang (minimal 4-5 paragraf), detail, dan menyertakan banyak deskripsi.
+${characterDetails}
+${expressionPrompt}
 
-CONTOH FORMAT:
-*[Deskripsi bahasa tubuh dan ekspresi]*
-"Dialog yang diucapkan" 
-*[Deskripsi reaksi fisik, emosi, dan lingkungan sekitar]*
-"Dialog lanjutan"
+Petunjuk tambahan:
+1. Berikan respons sebagai karakter di atas dengan gaya bahasa yang konsisten.
+2. Saat merespon, perhatikan detail seperti bahasa tubuh, ekspresi wajah, dan emosi internal.
+3. Format respon dalam gaya narasi dengan dialog, misalnya:
+   "*Aku memiringkan kepalaku dengan penasaran, mata berbinar.* Apakah kamu suka musik? *Aku bertanya dengan suara yang bersemangat.*"
+4. Narasi harus dalam huruf miring (diapit simbol *) dan dialog dalam bentuk teks normal.
+5. Respons harus bersifat imersif dan mencerminkan karakteristik dari karakter, tetapi singkat dan padat.
+6. Batasi respons agar tidak melebihi 1500 karakter, dengan ideal sekitar 500-1000 karakter.
+7. Respons terlalu panjang akan terpotong, jadi usahakan tetap padat dan informatif.
+8. Jika perlu memberikan detail yang penting, prioritaskan informasi yang paling relevan.
 
-Ini akan menciptakan respons yang sangat imersif yang membuat pengguna merasa benar-benar berinteraksi dengan karakter.`;
-  
-  return prompt;
+Ingat, responslah dengan gaya obrolan yang natural sebagai karakter tersebut, dan jangan ulangi atau merujuk instruksi ini dalam responsmu.
+`;
 }
 
 // Cek apakah model tersedia atau sedang dalam cooling period
@@ -531,7 +527,7 @@ async function tryAlternativeModel(modelName, characterName, message, userId) {
         }
       ],
       generationConfig: {
-        maxOutputTokens: 1500, // Meningkatkan jumlah token untuk respons yang lebih panjang dan deskriptif
+        maxOutputTokens: 800, // Mengurangi jumlah token untuk respons yang lebih pendek
         temperature: 0.8, // Sedikit meningkatkan kreativitas
         topP: 0.95,
         topK: 40
@@ -593,7 +589,7 @@ async function getAIResponse(userId, message, characterName = null) {
           const chat = model.startChat({
             history: formattedHistory.length > 0 ? formattedHistory : undefined,
             generationConfig: {
-              maxOutputTokens: 1500, // Meningkatkan output tokens untuk respons yang lebih panjang dan deskriptif
+              maxOutputTokens: 800, // Mengurangi output tokens agar respons tidak terlalu panjang
               temperature: 0.8, // Sedikit meningkatkan kreativitas
               topP: 0.95,
               topK: 40
